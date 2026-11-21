@@ -4,3 +4,4 @@ docs/build/
 docs/gen/
 # vídeos gerados por tools/record-demo.mjs
 demo/out/
+__pycache__/
