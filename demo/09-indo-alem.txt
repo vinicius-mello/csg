@@ -71,8 +71,8 @@ legenda: Retas que formam uma superfície curva: o hiperboloide é duplamente re
 
 tópico: Para continuar
 legenda: Há muito mais no manual: escalas, poliedros, funções anônimas, grandes operadores...
-legenda: E no menu Exemplos há modelos prontos para estudar e modificar. Bons estudos!
+legenda: E no menu Exemplos há modelos prontos para estudar e modificar. Na próxima lição: perfis planos.
 girar: 180 6
 legenda: -
 
-título: Fim | CSG: vinicius-mello.github.io/csg
+título: Fim da lição 9 | Próxima lição: perfis, extrusão e revolução
