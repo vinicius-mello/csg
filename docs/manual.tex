@@ -1,0 +1,907 @@
+% Manual do CSG. Compile com `npm run manual` (docs/build-manual.mjs), que:
+%   - avalia todo bloco \begin{csg}[run] com o interpretador e o núcleo reais;
+%   - gera gen/functions.tex e gen/symbols.tex a partir do código;
+%   - renderiza as figuras (\csgfig) com o visualizador da aplicação;
+%   - colore os blocos csg com o mesmo realce do editor e compila com LuaLaTeX.
+% O arquivo também compila diretamente (lualatex manual.tex), com código sem cores.
+\documentclass[11pt,a4paper]{article}
+\usepackage[a4paper,top=24mm,bottom=24mm,left=22mm,right=22mm,headheight=14pt]{geometry}
+\usepackage[brazilian,shorthands=off]{babel}
+
+% ---------- fontes ----------
+\usepackage{fontspec}
+\usepackage{unicode-math}
+% símbolos que o Libertinus Serif não tem caem no Libertinus Math e na JuliaMono
+\directlua{luaotfload.add_fallback("csgfallback",
+  {"LibertinusMath-Regular.otf:mode=node;", "JuliaMono-Regular.ttf:mode=node;"})}
+\setmainfont{LibertinusSerif}[Extension=.otf, UprightFont=*-Regular, BoldFont=*-Semibold,
+  ItalicFont=*-Italic, BoldItalicFont=*-SemiboldItalic, RawFeature={fallback=csgfallback}]
+\setsansfont{LibertinusSans}[Extension=.otf, UprightFont=*-Regular, BoldFont=*-Bold,
+  ItalicFont=*-Italic, RawFeature={fallback=csgfallback}]
+\setmathfont{LibertinusMath-Regular.otf}
+\setmonofont{JuliaMono}[Path=fonts/, Extension=.ttf, UprightFont=*-Regular, BoldFont=*-SemiBold,
+  ItalicFont=*-RegularItalic, BoldItalicFont=*-SemiBoldItalic, Scale=MatchLowercase,
+  Contextuals=NoAlternate, Ligatures={NoCommon,NoRequired}]
+
+% ---------- pacotes ----------
+\usepackage{xcolor}
+\usepackage{graphicx}
+\usepackage{fvextra}
+\usepackage[most]{tcolorbox}
+\usepackage{booktabs,array,longtable}
+\usepackage{enumitem}
+\usepackage{titlesec}
+\usepackage{fancyhdr}
+\usepackage[font=small,labelfont={bf,sf},labelsep=endash]{caption}
+\usepackage{microtype}
+\usepackage[hidelinks]{hyperref}
+
+% ---------- cores (as do tema claro do editor) ----------
+\definecolor{accent}{HTML}{2F5FB3}
+\definecolor{muted}{HTML}{666666}
+\definecolor{codebg}{HTML}{F4F5F7}
+\definecolor{rulec}{HTML}{D8DBE0}
+\definecolor{notebg}{HTML}{FDF8E6}
+\definecolor{noteframe}{HTML}{E0C36A}
+\definecolor{tkcomment}{HTML}{8A8A85}
+\definecolor{tknumber}{HTML}{A5521A}
+\definecolor{tkkeyword}{HTML}{8B2FA8}
+\definecolor{tkdef}{HTML}{1F5FBF}
+\definecolor{tkbuiltin}{HTML}{0F7A6C}
+\definecolor{tkset}{HTML}{C4372F}
+\definecolor{tkiso}{HTML}{B26A00}
+\definecolor{tkbracket}{HTML}{6B6B70}
+\hypersetup{colorlinks, linkcolor=accent, urlcolor=accent, citecolor=accent,
+  pdftitle={CSG — Manual da linguagem e da aplicação}, pdfsubject={Modelagem de sólidos por CSG}}
+
+% ---------- página ----------
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{5pt plus 1pt}
+\setlist{itemsep=1pt, topsep=3pt, parsep=1pt, leftmargin=16pt}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[R]{\sffamily\footnotesize\color{muted} CSG · manual}
+\fancyfoot[C]{\small\color{muted}\thepage}
+\renewcommand{\headrulewidth}{0pt}
+
+\titleformat{\section}{\sffamily\bfseries\LARGE\color{accent}}{\thesection}{0.55em}{}[{\color{accent}\vspace{2pt}\titlerule[1.2pt]}]
+\titleformat{\subsection}{\sffamily\bfseries\large}{\thesubsection}{0.5em}{}
+\titleformat{\subsubsection}{\sffamily\bfseries\normalsize\color{black!80}}{}{0pt}{}
+\titlespacing*{\section}{0pt}{0pt}{10pt}
+\titlespacing*{\subsection}{0pt}{14pt}{4pt}
+\titlespacing*{\subsubsection}{0pt}{10pt}{3pt}
+\AddToHook{cmd/section/before}{\clearpage}
+
+% ---------- código ----------
+% inline: \code{...} lê o argumento literalmente (\, #, { } etc. são permitidos, se as chaves forem balanceadas)
+\NewDocumentCommand\code{v}{\texttt{#1}}
+\newcommand\kbd[1]{{\setlength{\fboxsep}{1.2pt}\setlength{\fboxrule}{0.4pt}%
+  \raisebox{0.5pt}{\fcolorbox{black!35}{black!2}{\sffamily\footnotesize\vphantom{Ay}#1}}}}
+\newtcolorbox{csgbox}{enhanced, colback=codebg, colframe=accent, boxrule=0pt, leftrule=2.5pt,
+  arc=0pt, outer arc=0pt, left=7pt, right=6pt, top=2pt, bottom=2pt, before skip=5pt, after skip=8pt}
+% blocos com realce (gerados pelo build) e sem realce
+\DefineVerbatimEnvironment{csghl}{Verbatim}{commandchars=\\\{\}, fontsize=\small, breaklines, breaksymbolleft={}}
+\DefineVerbatimEnvironment{csgpl}{Verbatim}{fontsize=\small, breaklines, breaksymbolleft={}}
+% fonte: \begin{csg}[run, id=nome] … \end{csg}  (run = o build avalia o programa)
+\makeatletter
+\define@key{FV}{run}[]{}\define@key{FV}{id}{}\define@key{FV}{plain}[]{}
+\makeatother
+\DefineVerbatimEnvironment{csg}{Verbatim}{fontsize=\small, breaklines, frame=leftline,
+  framerule=2.5pt, rulecolor=\color{accent}, xleftmargin=4pt}
+\newcommand\tkBS{\char92\relax}
+\newcommand\tkLB{\char123\relax}
+\newcommand\tkRB{\char125\relax}
+\newcommand\tkcomment[1]{\textcolor{tkcomment}{\itshape #1}}
+\newcommand\tknumber[1]{\textcolor{tknumber}{#1}}
+\newcommand\tkkeyword[1]{\textcolor{tkkeyword}{\bfseries #1}}
+\newcommand\tkdef[1]{\textcolor{tkdef}{\bfseries #1}}
+\newcommand\tkbuiltin[1]{\textcolor{tkbuiltin}{#1}}
+\newcommand\tkset[1]{\textcolor{tkset}{\bfseries #1}}
+\newcommand\tkiso[1]{\textcolor{tkiso}{\bfseries #1}}
+\newcommand\tklogic[1]{\textcolor{tkkeyword}{#1}}
+\newcommand\tkmath[1]{\textcolor{tknumber}{#1}}
+\newcommand\tkbracket[1]{\textcolor{tkbracket}{#1}}
+\newcommand\tklatex[1]{\textcolor{tkcomment}{#1}}
+\newcommand\tkident[1]{#1}
+\newcommand\tkop[1]{#1}
+
+% ---------- tabelas, notas, figuras ----------
+\newcolumntype{L}[1]{>{\raggedright\arraybackslash}p{\dimexpr#1\linewidth-\tabcolsep\relax}}
+\setlength{\LTleft}{0pt}\setlength{\LTright}{0pt}\setlength{\LTpre}{4pt}\setlength{\LTpost}{6pt}
+\newcommand\colhead[1]{{\sffamily\footnotesize\color{muted}\MakeUppercase{#1}}}
+\renewcommand{\arraystretch}{1.22}
+\newtcolorbox{nota}{colback=notebg, colframe=noteframe, boxrule=0.6pt, arc=1pt,
+  left=7pt, right=7pt, top=4pt, bottom=4pt, before skip=6pt, after skip=10pt, fontupper=\small}
+% \csgfig{parâmetros da renderização}{arquivo em img/ sem extensão}{fração da largura}{legenda}
+% parâmetros: pre=ID (programa do bloco com id=ID), size=LxA, dist=, view=iso|top|front|side
+\newcommand\csgfig[4]{\begin{figure}[!ht]\centering
+  \includegraphics[width=#3\linewidth,height=80mm,keepaspectratio]{img/#2.png}
+  \caption{#4}\end{figure}}
+
+\begin{document}
+
+% ======================================================= capa
+\begin{titlepage}
+\vspace*{38mm}
+{\fontsize{64}{64}\selectfont\ttfamily\color{accent} ⋃ ∩ ∖\par}
+\vspace{16pt}
+{\sffamily\bfseries\fontsize{34}{38}\selectfont CSG\par}
+\vspace{8pt}
+{\sffamily\Large\color{muted} Modelagem de sólidos com uma linguagem de inspiração matemática\par}
+\vspace{2pt}
+{\sffamily\large\color{muted} Manual da linguagem e da aplicação\par}
+\vspace{28pt}
+\begin{minipage}{130mm}
+\begin{csg}[run]
+furos ≔ ⋃{ Rz(k · 45°) · T(24, 0, 0) · cylinder(2, 10) | k ∈ 0..<8 }
+peça  ≔ cylinder(30, 4) ∖ furos ∖ sphere(8)
+⊢ peça
+\end{csg}
+\end{minipage}
+\vfill
+{\sffamily\small\color{muted} Versão de \today\par}
+\end{titlepage}
+
+{\hypersetup{linkcolor=black}\tableofcontents}
+
+% =======================================================
+\section{Introdução}\label{sec:intro}
+
+\textbf{CSG} (\emph{Constructive Solid Geometry}, geometria construtiva de sólidos) descreve um objeto tridimensional como
+uma expressão: sólidos simples, como cubos, esferas e cilindros, são posicionados por transformações e combinados por
+operações da teoria dos conjuntos: união $\cup$, interseção $\cap$ e diferença $\setminus$.
+Esta aplicação leva essa ideia a sério. O modelo é escrito numa linguagem cuja notação é a da matemática, e cada
+definição é uma igualdade entre conjuntos de pontos do espaço.
+
+Um programa curto já produz uma peça imprimível:
+
+\begin{csg}[run, id=flange-mini]
+r ≔ 30                                       # raio da base
+furo(θ) ≔ Rz(θ) ∘ T(r - 6, 0, 0) · cylinder(r = 2, h = 10)
+base    ≔ cylinder(r, 4)
+furos   ≔ ⋃{ furo(k · 45°) | k ∈ 0..<8 }
+pilares ≔ ⋃{ T(⟨20sx, 20sy, 0⟩) · box(4, 4, 20) | sx, sy ∈ {-1, 1} }
+peça    ≔ (base ∖ furos) ∪ pilares ∖ sphere(8)
+⊢ ground(peça)
+\end{csg}
+
+\csgfig{pre=flange-mini&size=900x520&dist=0.85}{flange}{0.9}{O programa acima: uma base com oito furos, quatro pilares e um rebaixo esférico.}
+
+Os ingredientes já aparecem aí:
+\begin{itemize}
+  \item \textbf{definições} com \code{≔}, de constantes (\code{r}) e de funções (\code{furo(θ)});
+  \item \textbf{isometrias} como valores: \code{Rz(θ)} é uma rotação, \code{T(…)} uma translação, compostas por \code{∘} e aplicadas por \code{·};
+  \item \textbf{compreensão} no estilo de construção de conjuntos, \code{{ furo(k · 45°) | k ∈ 0..<8 }}, e a \textbf{união de uma família} \code{⋃};
+  \item \textbf{operações de conjunto} entre sólidos: \code{∖} e \code{∪};
+  \item o \textbf{objeto exibido}, marcado com \code{⊢}, que pode ser exportado como STL para impressão 3D.
+\end{itemize}
+
+A aplicação roda inteiramente no navegador. É escrita em HTML, CSS e JavaScript, sem etapa de compilação.
+A única dependência é o núcleo geométrico \href{https://github.com/elalish/manifold}{manifold}, compilado para WebAssembly.
+Ele garante que todo resultado seja um sólido fechado e bem orientado, pronto para o fatiador da impressora.
+
+\begin{nota}
+\textsf{\textbf{Convenções.}} As unidades são milímetros. O eixo $z$ aponta para cima e a mesa de impressão é o plano $z = 0$.
+Ângulos são medidos em radianos: \code{45°} é apenas uma forma de escrever \code{45·π/180}.
+\end{nota}
+
+% =======================================================
+\section{A aplicação}\label{sec:interface}
+
+\subsection{Como abrir}
+Por usar módulos JavaScript e WebAssembly, a aplicação precisa ser servida por HTTP; abrir o arquivo
+\code{index.html} diretamente (\code{file://}) não funciona. Na pasta do projeto, execute
+\code{python3 -m http.server} (ou \code{npm run serve}) e acesse \code{http://localhost:8000}.
+A versão publicada no site funciona sem instalação.
+
+\subsection{Visão geral da tela}
+\begin{itemize}
+  \item \textbf{Menu}, no topo:
+    \begin{itemize}
+      \item \emph{Arquivo}: novo, abrir e salvar programas \code{.csg}, exportar STL;
+      \item \emph{Editar}: desfazer, comentar linhas, substituições automáticas, paleta;
+      \item \emph{Exibir}: grade, eixos, arestas, projeção, vistas, tema;
+      \item \emph{Avaliar}: avaliação automática e qualidade;
+      \item \emph{Exemplos};
+      \item \emph{Ajuda}: referência rápida e este manual.
+    \end{itemize}
+  \item \textbf{Paleta de símbolos}, logo abaixo: um clique insere o símbolo no cursor. Passe o mouse para ver o nome, o atalho e a grafia ASCII.
+  \item \textbf{Editor}, à esquerda: realce de sintaxe, números de linha, erros sublinhados e, abaixo dele, o painel de saída com erros e valores exibidos com \code{⊢}.
+  \item \textbf{Visualização 3D}, à direita: o modelo sobre a grade da mesa de impressão, com o painel \textbf{Objetos} e a barra de vistas.
+  \item \textbf{Barra de status}, embaixo: resultado e tempo da avaliação, número de triângulos, dimensões e volume do objeto selecionado, posição do cursor.
+\end{itemize}
+
+\subsection{Avaliação}
+Com \emph{Avaliar ao digitar} ligado (padrão), o programa é reavaliado meio segundo depois da última tecla.
+\kbd{Ctrl}+\kbd{Enter} avalia imediatamente. A avaliação acontece num processo separado (\emph{Web Worker}), então
+a interface nunca trava. Se uma avaliação demorar mais de um segundo e você continuar editando, ela é cancelada.
+Enquanto o programa tiver erro de sintaxe, a visualização mantém o último modelo válido.
+
+\subsection{Visualização}
+\begin{longtable}{@{}L{0.45}L{0.55}@{}}
+\toprule
+arrastar com o botão esquerdo & girar em torno do modelo \\
+botão direito, botão do meio ou \kbd{Shift}+arrastar & deslocar \\
+roda do mouse / pinça (toque) & aproximar e afastar \\
+duplo clique, \kbd{F} ou \code{⤢} & enquadrar o modelo \\
+Iso · Frente · Topo · Lado & vistas padrão \\
+\bottomrule
+\end{longtable}
+Em \emph{Exibir} é possível ligar as arestas dos triângulos (útil para avaliar a resolução), desligar grade
+e eixos, usar projeção ortográfica e escolher tema claro ou escuro.
+
+\subsection{Painel de objetos}
+Lista todos os \textbf{objetos nomeados} do programa (seção~\ref{sec:objetos}) e as expressões exibidas com \code{⊢}.
+Para cada um há:
+\begin{itemize}
+  \item o botão \code{◉}/\code{○}, que exibe ou oculta o objeto;
+  \item o botão \textbf{STL}, que exporta o objeto;
+  \item a seleção, feita com um clique no nome, que define o objeto descrito na barra de status e exportado pelo menu \emph{Arquivo}.
+\end{itemize}
+Abaixo da lista aparecem os valores das constantes que não são sólidos.
+
+\subsection{Arquivos e preferências}
+O programa é salvo automaticamente no navegador; ao reabrir a página, ele volta. \kbd{Ctrl}+\kbd{S} baixa o
+programa como arquivo \code{.csg} (texto UTF-8), que pode ser reaberto por \emph{Arquivo → Abrir}.
+As preferências de menus também são lembradas. Carregar um exemplo ou criar um programa novo pode ser desfeito com \kbd{Ctrl}+\kbd{Z}.
+
+% =======================================================
+\section{Digitando a notação matemática}\label{sec:simbolos}
+
+Há quatro maneiras de escrever cada símbolo, e todas produzem exatamente o mesmo programa:
+\begin{enumerate}
+  \item \textbf{Atalho estilo LaTeX.} Digite \code{\cup} seguido de espaço, Tab ou qualquer sinal de pontuação e ele vira \code{∪}.
+    Ao digitar \code{\}, aparece uma lista de sugestões que se filtra conforme você digita; navegue com as setas e confirme com
+    \kbd{Tab} ou \kbd{Enter}. Letras gregas também funcionam: \code{\theta} → \code{θ},
+    \code{\alpha} → \code{α}. Índices numéricos se digitam com \code{\_1} → \code{₁}.
+  \item \textbf{Substituição automática.} Ao digitar \code{:=}, \code{->}, \code{<=}, \code{>=} ou \code{!=},
+    o editor os troca por \code{≔ ↦ ≤ ≥ ≠}. Pode ser desligada em \emph{Editar}.
+  \item \textbf{Paleta} de símbolos, com o mouse.
+  \item \textbf{Grafia ASCII}, diretamente: a linguagem aceita \code{\/} para \code{∪}, \code{/\} para \code{∩},
+    \code{\} para \code{∖}, \code{*} para \code{·}, \code{@} para \code{∘}, \code{and}, \code{or},
+    \code{not}, \code{in}, \code{pi}, \code{45deg} etc. Os próprios nomes LaTeX (\code{\cup}) também são
+    aceitos no código-fonte, mesmo sem a conversão.
+\end{enumerate}
+
+Os dois programas abaixo são idênticos para a linguagem:
+\begin{csg}[run]
+A ≔ cube(10) ∪ T(5, 0, 0) · sphere(6) ∖ cylinder(2, 30)
+B := cube(10) \/ T(5, 0, 0) * sphere(6) \ cylinder(2, 30)
+⊢ A, Tx(30) · B
+\end{csg}
+
+A tabela completa está na seção~\ref{sec:tabela}. Os mais usados:
+\begin{longtable}{@{}L{0.3}L{0.70}@{}}
+\toprule
+\code{≔ ⊢ ↦} & \code{\def} ou \code{:=} · \code{\show} · \code{\to} ou \code{->} \\
+\code{∪ ∩ ∖ △} & \code{\cup \cap \setminus \triangle} \\
+\code{⋃ ⋂ Σ ∏} & \code{\bigcup \bigcap \sum \prod} \\
+\code{∘ · × ⁻¹} & \code{\circ \cdot \times \inv} \\
+\code{∈ ≤ ≥ ≠ ∧ ∨ ¬} & \code{\in \le \ge \ne \and \or \not} \\
+\code{° π √ ² ⟨ ⟩} & \code{\deg \pi \sqrt \sq \langle \rangle} \\
+\bottomrule
+\end{longtable}
+
+\subsection{Outros recursos do editor}
+\begin{longtable}{@{}L{0.3}L{0.70}@{}}
+\toprule
+\kbd{Ctrl}+\kbd{Enter} & avaliar agora \\
+\kbd{Ctrl}+\kbd{S} & salvar o programa \\
+\kbd{Ctrl}+\kbd{/} & comentar ou descomentar as linhas selecionadas \\
+\kbd{Tab} / \kbd{Shift}+\kbd{Tab} & indentar / desindentar (com várias linhas selecionadas) \\
+\kbd{Enter} & nova linha mantendo a indentação \\
+\kbd{F1} & referência rápida \\
+\bottomrule
+\end{longtable}
+Erros aparecem sublinhados em vermelho no ponto exato, com o número da linha destacado. Passe o mouse sobre o número
+para ver a mensagem, ou clique na mensagem no painel de saída para levar o cursor até ela.
+
+% =======================================================
+\section{Programas, definições e objetos}\label{sec:programas}
+
+\subsection{Definições}
+Um programa é uma sequência de \textbf{definições}, uma por linha:
+\begin{csg}
+nome ≔ expressão                        # constante
+f(x, y) ≔ expressão                     # função
+g(x, n = 3) ≔ expressão                 # parâmetro com valor padrão
+\end{csg}
+O sinal \code{=} também é aceito no lugar de \code{≔} numa definição. Fora das definições, \code{=} é comparação.
+Nomes começam com letra (qualquer alfabeto, incluindo grego) ou \code{_} e podem conter dígitos, índices
+(\code{r₁}), \code{_} e apóstrofos (\code{f′}). Comentários começam com \code{#} e vão até o fim da linha.
+
+\subsection{A ordem não importa}
+As definições de topo formam um sistema de equações, não uma sequência de comandos. Um nome pode ser usado antes
+da linha em que é definido, e funções podem ser mutuamente recursivas. Cada constante é calculada uma única vez, quando
+alguém precisa dela. Definições circulares (\code{a ≔ b}, \code{b ≔ a}) são detectadas e
+geram erro. Um nome não pode ser definido duas vezes no mesmo programa. Já redefinir um nome embutido, como chamar um sólido
+de \code{S}, é permitido, mas esconde a função original.
+\begin{csg}[run]
+peça ≔ base ∖ furo          # usa nomes definidos abaixo
+base ≔ cylinder(raio, 5)
+furo ≔ cylinder(raio / 3, 20)
+raio ≔ 12
+\end{csg}
+
+\subsection{Objetos nomeados e o que é exibido}\label{sec:objetos}
+Toda constante de topo cujo valor é um sólido é um \textbf{objeto nomeado}: aparece no painel de objetos, pode ser exibida e
+pode ser exportada como STL com o seu nome. O comando \code{⊢} (ou \code{show}) escolhe o que a visualização mostra
+inicialmente. Ele aceita várias expressões separadas por vírgula e pode aparecer em várias linhas.
+\begin{csg}[run]
+caixa  ≔ box(30, 20, 10)
+tampa  ≔ Tz(15) · box(30, 20, 2)
+⊢ caixa, tampa              # dois objetos, em cores diferentes
+⊢ volume(caixa)             # números e listas aparecem no painel de saída
+\end{csg}
+Sem nenhum \code{⊢}, aparece o último objeto nomeado. Uma linha com uma expressão solta equivale a \code{⊢} dessa expressão.
+
+\subsection{Linhas longas}\label{sec:linhas}
+Uma definição pode ocupar várias linhas. Uma quebra de linha \textbf{não} termina a definição quando:
+\begin{itemize}
+  \item está dentro de parênteses, colchetes ou chaves ainda abertos;
+  \item a linha seguinte começa indentada (com espaços);
+  \item a linha termina com um operador, uma vírgula, \code{≔}, \code{↦}, \code{then}, \code{else}, \code{let}, \code{in};
+  \item a linha seguinte começa com um operador binário (\code{∪}, \code{∖}, \code{·}, \code{|>}, …) ou com \code{then}/\code{else}/\code{in}.
+\end{itemize}
+Para recuperar melhor de erros, uma linha \textbf{não indentada} que começa com \code{nome ≔} sempre inicia uma nova definição,
+mesmo depois de um parêntese esquecido. Várias definições curtas podem ficar na mesma linha separadas por \code{;}.
+\begin{csg}[run]
+roda(r, e) ≔
+  let aro ≔ cylinder(r, e) ∖ cylinder(r - 2, 2e),
+      raios ≔ ⋃{ Rz(k · 60°) · T(r/2, 0, 0) · box(r, 1.5, e) | k ∈ 0..<3 }
+  in aro ∪ raios
+     ∪ cylinder(3, e)
+a ≔ 1; b ≔ 2
+⊢ roda(20, 4)
+\end{csg}
+
+% =======================================================
+\section{Valores e expressões}\label{sec:valores}
+
+\subsection{Tipos de valores}
+\begin{longtable}{@{}L{0.22}L{0.78}@{}}
+\toprule
+\colhead{Tipo} & \colhead{Exemplos} \\
+\midrule
+número & \code{3}, \code{-2.5}, \code{1e-3}, \code{π}, \code{τ} (= 2π), \code{e}, \code{∞}, \code{45°} \\
+booleano & \code{true}, \code{false}, resultados de comparações \\
+lista (e vetor) & \code{[1, 2, 3]}, \code{⟨1, 2, 3⟩}, \code{{-1, 1}}, \code{[]} \\
+intervalo & \code{0..10}, \code{0..<10}, \code{range(0, 1, 0.25)} \\
+sólido & \code{cube(10)}, \code{A ∪ B}, \code{∅} \\
+transformação & \code{T(1, 2, 3)}, \code{Rz(30°)}, \code{S(2)}, \code{id} \\
+função & \code{x ↦ x²}, \code{sin}, \code{(∪)}, \code{cylinder(5)} (aplicação parcial) \\
+\bottomrule
+\end{longtable}
+A tipagem é dinâmica. Uma operação aplicada a valores incompatíveis gera um erro que diz quais tipos foram encontrados,
+por exemplo \emph{'∪' não se aplica a sólido e número}.
+
+\subsection{Números}\label{sec:numeros}
+\begin{itemize}
+  \item \textbf{Aritmética}: \code{+ - · / ^}, com \code{*} e \code{×} como alternativas para o produto. \code{mod} é o resto matemático, sempre não negativo para divisor positivo: \code{-7 mod 3 = 2}.
+  \item \textbf{Expoentes sobrescritos}: \code{x²}, \code{x³}, \code{2¹⁰}. A potência associa à direita: \code{2^3^2 = 2^9}. O sinal de menos tem precedência menor, então \code{-2² = -4}.
+  \item \textbf{Raiz e arredondamentos}: \code{√x} ou \code{√(x + 1)}; \code{⌊x⌋} e \code{⌈x⌉} para piso e teto.
+  \item \textbf{Graus}: \code{x°} multiplica por $\pi/180$. Funciona depois de qualquer expressão: \code{(a + b)°}.
+  \item \textbf{Multiplicação implícita}: um número literal colado (sem espaço) a um nome, parêntese ou \code{√} multiplica:
+    \code{2π}, \code{3x²} (= \code{3·x²}), \code{30°k}, \code{2(x + 1)}, \code{2√2}. Com espaço, \code{2 π} é erro.
+    Entre dois nomes não há multiplicação implícita: escreva \code{a·b}.
+  \item \textbf{Divisão por zero} e operações sem resultado real, como \code{√(-1)}, são erros, não \code{NaN}.
+\end{itemize}
+\begin{csg}[run]
+⊢ 2π = τ, 3² + 4² = 5², 180° = π, ⌊7/2⌋, -7 mod 3, 1/2π
+\end{csg}
+
+\subsection{Listas, vetores e intervalos}
+Colchetes, chaves e ângulos formam listas: \code{[a, b]}, \code{{a, b}} e \code{⟨a, b⟩} são o mesmo valor.
+Use a grafia que comunica melhor a intenção: \code{⟨x, y, z⟩} para pontos e vetores, \code{{-1, 1}} para conjuntos de índices.
+Uma lista de três números é um \textbf{vetor}:
+\begin{itemize}
+  \item \code{u + v}, \code{u - v} e \code{k · v} operam componente a componente;
+  \item \code{u · v} é o produto escalar e \code{u × v} o vetorial;
+  \item \code{v.x}, \code{v.y}, \code{v.z} e \code{v[0]} acessam componentes (índices começam em 0);
+  \item \code{norm(v)}, \code{unit(v)} e \code{dist(p, q)} calculam norma, versor e distância.
+\end{itemize}
+\code{xs ++ ys} concatena listas. \code{∪}, \code{∩} e \code{∖} entre listas fazem a operação de conjuntos correspondente.
+
+\textbf{Intervalos} são sequências preguiçosas de números:
+\begin{itemize}
+  \item \code{a..b} vai de $a$ até $b$ inclusive, com passo 1;
+  \item \code{a..<b} exclui $b$;
+  \item \code{range(a, b, passo)} aceita passo fracionário ou negativo.
+\end{itemize}
+Intervalos funcionam onde uma lista funciona: em compreensões, \code{map}, \code{∈}, \code{len}, \code{Σ}.
+\begin{csg}[run]
+v ≔ ⟨1, 2, 3⟩
+⊢ v + [1, 1, 1], 2v, v · v, v × ⟨0, 0, 1⟩, v.z, len(0..<10), 3 ∈ 1..5, {1, 2} ∪ {2, 3}
+\end{csg}
+
+\subsection{Comparações e lógica}
+\code{= ≠ < ≤ > ≥} comparam números; \code{=} e \code{≠} comparam qualquer valor estruturalmente (listas
+elemento a elemento, transformações pela matriz). \code{x ∈ xs} e \code{x ∉ xs} testam pertinência em listas e intervalos.
+Comparações podem ser \textbf{encadeadas} como na matemática: \code{0 ≤ i < n} significa \code{0 ≤ i ∧ i < n}.
+Os conectivos são \code{¬ ∧ ∨} (ou \code{not and or}), com avaliação em curto-circuito. Condições precisam ser booleanas;
+números não valem como verdadeiro ou falso.
+
+\subsection{Precedência dos operadores}\label{sec:precedencia}
+Do que liga mais forte para o que liga mais fraco:
+\begin{longtable}{@{}L{0.45}L{0.55}@{}}
+\toprule
+\colhead{Operadores} & \colhead{Observação} \\
+\midrule
+\code{f(x)}\quad\code{xs[i]}\quad\code{v.x}\quad\code{x°}\quad\code{x²}\quad\code{g⁻¹} & pós-fixos \\
+multiplicação implícita \code{2x} & só depois de número literal \\
+\code{^} & associa à direita \\
+\code{∘} & composição \\
+\code{-x}\quad\code{√x} & prefixos \\
+\code{·}\quad\code{×}\quad\code{/}\quad\code{mod} & produtos; \code{g · A} aplica transformação \\
+\code{⋃}\quad\code{⋂}\quad\code{Σ}\quad\code{∏} & o operando inclui produtos, mas não somas \\
+\code{+}\quad\code{-}\quad\code{++} & \\
+\code{..}\quad\code{..<} & intervalos \\
+\code{⊕} & soma de Minkowski \\
+\code{∩} & como o produto em relação à soma \\
+\code{∪}\quad\code{∖}\quad\code{△} & mesmo nível, associam à esquerda (como \code{+} e \code{-}) \\
+\code{=}\quad\code{≠}\quad\code{<}\quad\code{≤}\quad\code{>}\quad\code{≥}\quad\code{∈}\quad\code{∉} & encadeáveis \\
+\code{¬}, depois \code{∧}, depois \code{∨} & \\
+\code{|>} & pipe \\
+\code{↦}\quad\code{if … then … else}\quad\code{let … in} & estendem-se o mais à direita possível \\
+\bottomrule
+\end{longtable}
+Consequências práticas:
+\begin{itemize}
+  \item \code{T(…) · A ∪ B} é \code{(T(…) · A) ∪ B}: a transformação só se aplica a \code{A}.
+  \item \code{A ∪ B ∖ C} é \code{(A ∪ B) ∖ C}, porque \code{∪} e \code{∖} associam da esquerda para a direita.
+  \item \code{A ∪ B ∩ C} é \code{A ∪ (B ∩ C)}.
+  \item \code{Rz(θ) ∘ T(…) · A} compõe primeiro e aplica depois.
+\end{itemize}
+Na dúvida, use parênteses.
+
+% =======================================================
+\section{Sólidos e operações de conjunto}\label{sec:solidos}
+
+\subsection{Primitivas}
+Todas as primitivas são \textbf{centradas na origem}; use \code{ground} (seção~\ref{sec:consultas}) para apoiá-las na mesa. Os argumentos
+podem ser posicionais ou nomeados: \code{cylinder(5, 20)} é o mesmo que \code{cylinder(h = 20, r = 5)}.
+\begin{longtable}{@{}L{0.4}L{0.60}@{}}
+\toprule
+\colhead{Primitiva} & \colhead{Sólido} \\
+\midrule
+\code{cube(a)} & cubo de aresta $a$ (também \code{cube([x, y, z])}) \\
+\code{box(x, y, z)} ou \code{box(v)} & paralelepípedo com essas dimensões \\
+\code{sphere(r, n?)} & esfera (geodésica) de raio $r$ \\
+\code{cylinder(r, h, n?)} & cilindro ao longo de $z$, de $-h/2$ a $h/2$ \\
+\code{cone(r1, r2, h, n?)} & tronco de cone, raio $r_1$ embaixo e $r_2$ em cima (um deles pode ser 0) \\
+\code{torus(R, r, n?, m?)} & toro em torno de $z$, raio maior $R$, raio do tubo $r < R$ \\
+\code{prism(n, r, h)} & prisma regular de $n$ lados inscrito no círculo de raio $r$ \\
+\code{polyhedron(pontos, faces)} & poliedro arbitrário (abaixo) \\
+\code{hull(A, B, …)} & fecho convexo de sólidos e/ou pontos \\
+\code{∅} (ou \code{empty}) & o sólido vazio, elemento neutro de $\cup$ \\
+\bottomrule
+\end{longtable}
+O parâmetro opcional \code{n} fixa o número de segmentos usados para aproximar círculos. Sem ele, a resolução
+segue a qualidade escolhida no menu \emph{Avaliar}: no máximo um certo ângulo por segmento e no mínimo um certo comprimento.
+\code{prism(6, r, h)} é exatamente um prisma hexagonal, útil para encaixes de porcas.
+
+\begin{csg}[run, id=prims]
+⊢ ground(cube(10)), Tx(16) · ground(sphere(6)), Tx(31) · ground(cylinder(5, 12)),
+  Tx(46) · ground(cone(6, 0, 12)), Tx(64) · ground(torus(7, 2.5)), Tx(82) · ground(prism(6, 6, 10)),
+  Tx(98) · ground(hull(cube(6), T(4, 4, 8) · sphere(2)))
+\end{csg}
+\csgfig{pre=prims&size=1000x380&dist=0.75&view=iso}{primitivas}{1}{Cubo, esfera, cilindro, cone, toro, prisma hexagonal e um fecho convexo.}
+
+\subsubsection{Poliedros}
+\code{polyhedron} recebe a lista de vértices e a lista de faces. Cada face é uma lista de índices dos vértices (a partir de 0)
+em \textbf{ordem anti-horária vista de fora}. A malha precisa fechar um volume: cada aresta pertence a exatamente duas faces.
+Caso contrário, um erro é reportado.
+\begin{csg}[run]
+tetraedro ≔ polyhedron([[0, 0, 0], [10, 0, 0], [0, 10, 0], [0, 0, 10]],
+                       [[0, 2, 1], [0, 1, 3], [0, 3, 2], [1, 2, 3]])
+⊢ volume(tetraedro)       # 1000/6
+\end{csg}
+
+\subsection{Operações de conjunto}
+\begin{longtable}{@{}L{0.32}L{0.68}@{}}
+\toprule
+\colhead{Operação} & \colhead{Significado} \\
+\midrule
+\code{A ∪ B} (também \code{A + B}) & união: pontos de $A$ ou de $B$ \\
+\code{A ∩ B} & interseção: pontos de $A$ e de $B$ \\
+\code{A ∖ B} (também \code{A - B}) & diferença: pontos de $A$ fora de $B$ \\
+\code{A △ B} & diferença simétrica: $(A \setminus B) \cup (B \setminus A)$ \\
+\code{A ⊕ B} & soma de Minkowski: $\{\, a + b \mid a \in A,\ b \in B \,\}$ (arredonda cantos) \\
+\bottomrule
+\end{longtable}
+\begin{csg}[run, id=setops]
+A ≔ cube(10)
+B ≔ T(4, 4, 4) · sphere(6.5)
+⊢ A ∪ B, Tx(25) · (A ∩ B), Tx(50) · (A ∖ B), Tx(75) · (A △ B)
+\end{csg}
+\csgfig{pre=setops&size=1000x360&dist=0.72}{conjuntos}{1}{Da esquerda para a direita: $A \cup B$, $A \cap B$, $A \setminus B$ e $A \mathbin{\triangle} B$, com $A$ um cubo e $B$ uma esfera.}
+Os resultados são sólidos de verdade, regularizados: superfícies que só se tocam não deixam lâminas de espessura zero, e o
+resultado é sempre uma malha fechada e orientada. Sólidos que apenas encostam numa face se fundem na união.
+
+\subsection{Famílias: \texttt{⋃} e \texttt{⋂}}
+\code{⋃ xs} une todos os sólidos de uma lista e \code{⋂ xs} intersecta todos. Listas aninhadas são achatadas.
+Combinadas com compreensões (seção~\ref{sec:compreensao}), escrevem padrões inteiros numa linha. A união de uma família é calculada em lote pelo
+núcleo, o que é muito mais rápido do que reduzir com \code{∪} um a um. \code{⋃} de uma lista vazia é \code{∅};
+\code{⋂} de uma lista vazia é erro, pois seria o espaço inteiro. Os nomes \code{union(xs)} e
+\code{intersection(xs)} fazem o mesmo, para uso em \emph{pipes}.
+
+\subsection{Consultas e posicionamento}\label{sec:consultas}
+\begin{longtable}{@{}L{0.3}L{0.70}@{}}
+\toprule
+\code{bounds(A)} & caixa envolvente \code{[[xmin, ymin, zmin], [xmax, ymax, zmax]]} \\
+\code{size(A)} & dimensões \code{[dx, dy, dz]} \\
+\code{volume(A)}, \code{area(A)} & volume (mm³) e área da superfície (mm²) \\
+\code{isempty(A)} & se $A$ é o conjunto vazio \\
+\code{center(A)} & translada $A$ para que o centro da caixa envolvente fique na origem \\
+\code{ground(A)} & translada $A$ verticalmente para apoiá-lo em $z = 0$ \\
+\bottomrule
+\end{longtable}
+Como os valores são calculados de verdade, eles podem dirigir o próprio projeto:
+\begin{csg}[run]
+corpo ≔ sphere(10) ∪ Tz(8) · cylinder(4, 10)
+tampa ≔ Tz(size(corpo).z / 2 + 1) · cylinder(6, 2)    # encaixa acima do corpo
+⊢ ground(corpo ∪ tampa)
+⊢ bounds(corpo), volume(corpo)
+\end{csg}
+
+% =======================================================
+\section{Isometrias, escalas e transformações afins}\label{sec:transf}
+
+Transformações são valores como quaisquer outros: podem ser guardadas em constantes, passadas a funções, postas em listas
+e comparadas. Internamente são matrizes afins $4 \times 4$.
+
+\subsection{Isometrias}
+\begin{longtable}{@{}L{0.45}L{0.55}@{}}
+\toprule
+\code{T(x, y, z)}, \code{T(v)}, \code{Tx(d)}, \code{Ty(d)}, \code{Tz(d)} & translações \\
+\code{Rx(θ)}, \code{Ry(θ)}, \code{Rz(θ)} & rotações em torno dos eixos (regra da mão direita) \\
+\code{R(eixo, θ)}, \code{R(eixo, θ, p)} & rotação em torno de um eixo qualquer, passando pela origem ou pelo ponto $p$ \\
+\code{Mx}, \code{My}, \code{Mz} & reflexões nos planos $x = 0$, $y = 0$, $z = 0$ \\
+\code{M(n)}, \code{M(n, p)} & reflexão no plano de normal $n$, pela origem ou pelo ponto $p$ \\
+\code{id} & a identidade \\
+\bottomrule
+\end{longtable}
+Rotações por múltiplos de 90° são calculadas de forma exata, sem erro de arredondamento.
+
+\subsection{A álgebra das transformações}
+\begin{longtable}{@{}L{0.25}L{0.75}@{}}
+\toprule
+\code{g · A} & aplica $g$ ao sólido $A$ (também a um ponto \code{⟨x, y, z⟩} ou a uma lista, elemento a elemento) \\
+\code{g(A)} & o mesmo que \code{g · A} \\
+\code{g ∘ h} & composição: primeiro $h$, depois $g$; \code{(g ∘ h) · A = g · (h · A)} \\
+\code{g⁻¹}, \code{inverse(g)} & inversa \\
+\code{g^n}, \code{gⁿ} & potência inteira (negativa usa a inversa); \code{g⁰ = id} \\
+\code{g = h} & igualdade das transformações \\
+\bottomrule
+\end{longtable}
+Como em \code{Rz(θ) ∘ T(d, 0, 0) · A}, a transformação mais próxima do sólido age primeiro. Aqui, o sólido é deslocado e depois girado em torno da origem.
+Isometrias formam um grupo, e a linguagem permite raciocinar com ele:
+\begin{csg}[run]
+g ≔ Rz(90°) ∘ T(10, 0, 0)       # rotação de 90° em torno do ponto (5, 5, 0)
+⊢ g⁴ = id, g · ⟨5, 5, 0⟩, (g ∘ g⁻¹) = id, Mx ∘ Mx = id
+\end{csg}
+
+\subsection{Escalas}
+\begin{longtable}{@{}L{0.3}L{0.70}@{}}
+\toprule
+\code{S(k)} & escala uniforme a partir da origem (semelhança) \\
+\code{S(x, y, z)}, \code{S(v)} & escala por eixo \\
+\code{Sx(k)}, \code{Sy(k)}, \code{Sz(k)} & escala num só eixo \\
+\code{scale(…)} & sinônimo de \code{S} \\
+\code{at(g, p)} & $g$ em torno do ponto $p$: \code{T(p) ∘ g ∘ T(-p)} \\
+\code{isometry(g)} & verdadeiro se $g$ preserva distâncias \\
+\bottomrule
+\end{longtable}
+Escalas não são isometrias, mas pertencem ao mesmo tipo de valor e se compõem com elas pelas mesmas regras. A composição de
+isometrias continua sendo isometria. Se uma escala entra na composição, o resultado é uma \textbf{transformação afim}, e as
+mensagens de erro passam a usar esse nome. Um fator de escala zero é erro, pois achataria o sólido. Um fator negativo é uma
+reflexão: \code{Sx(-1) = Mx}. A orientação das faces é corrigida automaticamente sempre que a transformação inverte o espaço.
+\begin{csg}[run, id=affine]
+ovo     ≔ S(1, 1, 1.4) · sphere(10)
+torre   ≔ ⋃{ Tz(4k) · Rz(9°k) · S(1 - k/20, 1 - k/20, 1) · box(20, 20, 4.01) | k ∈ 0..<12 }
+selo    ≔ cylinder(12, 3) ∖ at(S(0.6), [0, 0, 1.5]) · cylinder(12, 3)
+⊢ ground(ovo), Tx(35) · ground(torre), Tx(70) · ground(selo)
+⊢ isometry(Rz(9°) ∘ T(1, 2, 3)), isometry(Rz(9°) ∘ S(0.95))
+\end{csg}
+\csgfig{pre=affine&size=1000x420&dist=0.8}{afins}{0.95}{Um elipsoide (esfera escalada em $z$), uma torre de camadas giradas e encolhidas em $x$ e $y$, e um selo com rebaixo feito por escala em torno de um ponto.}
+
+\subsection{Simetria}
+Como transformações são valores, um \textbf{grupo de simetria} é simplesmente uma lista. A união da órbita de um motivo produz um
+objeto com aquela simetria:
+\begin{csg}[run, id=d4]
+D₄ ≔ { Rz(k · 90°) ∘ s | k ∈ 0..3, s ∈ [id, My] }      # grupo diedral: 8 elementos
+motivo ≔ T(14, 5, 0) · Rz(25°) · box(12, 3, 4) ∪ T(9, 9, 0) · sphere(2.5)
+roseta ≔ ⋃{ g · motivo | g ∈ D₄ } ∪ cylinder(6, 4) ∖ cylinder(2, 10)
+⊢ ground(roseta)
+\end{csg}
+\csgfig{pre=d4&size=800x560&view=top&dist=0.9}{d4}{0.6}{A órbita de um motivo sob o grupo diedral $D_4$, vista de cima.}
+
+% =======================================================
+\section{Funções e construções funcionais}\label{sec:funcional}
+
+\subsection{Definindo e chamando funções}
+\begin{csg}[run]
+arruela(d, D = 2d, e = 1.5) ≔ cylinder(D/2, e) ∖ cylinder(d/2, 2e)
+⊢ arruela(5), Tx(20) · arruela(5, e = 3), Tx(40) · arruela(d = 4, D = 15)
+\end{csg}
+\begin{itemize}
+  \item Parâmetros com valor padrão vêm depois dos obrigatórios. O padrão pode usar os parâmetros anteriores (\code{D = 2d}).
+  \item Argumentos nomeados (\code{e = 3}) vêm depois dos posicionais e podem estar em qualquer ordem.
+  \item Funções podem ser recursivas e mutuamente recursivas. A profundidade é limitada para evitar laços infinitos.
+  \item \code{f{…}} é atalho para chamar \code{f} com uma lista literal: \code{max{ i² | i ∈ 1..5 }}.
+\end{itemize}
+
+\subsection{Funções anônimas}
+\code{x ↦ expressão} (ou \code{x -> expressão}) é uma função anônima. Com vários parâmetros, use parênteses:
+\code{(x, y) ↦ x + y}. Um parâmetro pode ser desestruturado: \code{[a, b] ↦ a·b} recebe um par.
+Funções anônimas capturam as variáveis visíveis onde foram escritas.
+
+\subsection{Aplicação parcial}
+Chamar uma função com \textbf{menos} argumentos posicionais do que ela exige devolve uma função que espera os restantes:
+\code{cylinder(5)} é a função \code{h ↦ cylinder(5, h)}. Por isso as funções de listas recebem a lista por
+último (\code{map(f, xs)}, \code{filter(p, xs)}): \code{map(f)} é uma função de listas, pronta para \emph{pipes}.
+Se uma aplicação parcial chegar onde se esperava um sólido, a mensagem de erro diz qual argumento faltou.
+
+\subsection{Operadores como funções: seções}
+\begin{longtable}{@{}L{0.4}L{0.60}@{}}
+\toprule
+\code{(∪)}, \code{(+)}, \code{(·)}, \code{(=)}… & o operador binário como função de dois argumentos \\
+\code{(A ∪)}, \code{(Rz(90°) ·)}, \code{(10 -)} & seção à esquerda: falta o operando da direita \\
+\code{(∖ furo)}, \code{(· 2)}, \code{(mod 3)} & seção à direita: falta o operando da esquerda \\
+\code{(⋃)}, \code{(Σ)}, \code{(√)}, \code{(¬)} & operadores prefixos como funções de um argumento \\
+\bottomrule
+\end{longtable}
+\code{(- x)} é a negação de $x$, não uma seção.
+
+\subsection{Composição e pipe}
+\code{f ∘ g} compõe funções ($(f \circ g)(x) = f(g(x))$), assim como compõe transformações.
+\code{x |> f} aplica $f$ a $x$. Encadeado, o pipe lê como uma linha de montagem:
+\begin{csg}[run]
+dente ≔ T(12, 0, 0) · box(4, 3, 5)
+coroa ≔ 0..<12 |> map(k ↦ Rz(30°k) · dente) |> union
+⊢ coroa ∪ cylinder(12, 5)
+⊢ 1..10 |> filter(x ↦ x mod 2 = 0) |> map((· 10)), ((x ↦ x + 1) ∘ (x ↦ 2x))(5)
+\end{csg}
+
+\subsection{\texttt{map}, \texttt{filter}, \texttt{fold} e \texttt{reduce}}
+\begin{longtable}{@{}L{0.25}L{0.75}@{}}
+\toprule
+\code{map(f, xs)} & \code{[f(x₀), f(x₁), …]} \\
+\code{filter(p, xs)} & os elementos para os quais \code{p(x)} é verdadeiro \\
+\code{fold(f, a, xs)} & \code{f(…f(f(a, x₀), x₁)…, xₙ)}, redução pela esquerda a partir de $a$ \\
+\code{reduce(f, xs)} & como \code{fold}, começando do primeiro elemento (erro se vazia) \\
+\code{iterate(f, k, x)} & \code{[x, f(x), f(f(x)), …]} com $k$ aplicações \\
+\bottomrule
+\end{longtable}
+\begin{csg}[run]
+peças ≔ [cube(8), T(6, 0, 0) · sphere(5), T(12, 0, 0) · cylinder(3, 12)]
+⊢ reduce((∪), peças)
+⊢ fold((+), 0, 1..100), iterate(x ↦ 2x, 5, 1)
+\end{csg}
+
+\subsection{\texttt{let} e \texttt{if}}
+\code{let a ≔ …, b ≔ …, f(x) ≔ … in expressão} introduz nomes locais; cada definição enxerga as anteriores, e funções
+locais podem ser recursivas. \code{if c then a else b} é uma expressão (o \code{else} é obrigatório); a condição
+precisa ser booleana.
+\begin{csg}[run, id=menger]
+menger(k, s) ≔
+  if k = 0 then cube(s)
+  else ⋃{ T((s/3) · [i, j, l]) · menger(k - 1, s/3)
+        | i, j, l ∈ -1..1, abs(i) + abs(j) + abs(l) > 1 }
+⊢ ground(menger(2, 54))
+\end{csg}
+\csgfig{pre=menger&size=800x600&dist=0.85}{menger}{0.6}{A esponja de Menger de nível 2: recursão, compreensão em três índices e união de família.}
+
+% =======================================================
+\section{Compreensões e grandes operadores}\label{sec:compreensao}
+
+\subsection{Compreensões}
+Uma compreensão constrói uma lista à maneira da notação de conjuntos: \code{{ expressão | cláusulas }} ou
+\code{[ expressão | cláusulas ]}. As cláusulas, separadas por vírgula, são processadas da esquerda para a direita:
+\begin{longtable}{@{}L{0.32}L{0.68}@{}}
+\toprule
+\code{x ∈ A} (ou \code{x in A}) & \textbf{gerador}: $x$ percorre a lista ou intervalo $A$ \\
+\code{i, j ∈ A} & dois geradores aninhados sobre o mesmo conjunto \\
+\code{[a, b] ∈ pares} & gerador com desestruturação \\
+\code{y ≔ expressão} & definição local, visível nas cláusulas seguintes e no corpo \\
+qualquer condição booleana & \textbf{filtro}: mantém só as combinações que a satisfazem \\
+\bottomrule
+\end{longtable}
+Geradores posteriores variam mais rápido, como laços aninhados. Um nome já introduzido por um gerador da mesma compreensão
+faz de \code{x ∈ B} um filtro de pertinência, como na matemática: \code{{ x | x ∈ 1..20, x ∈ primos }}.
+\begin{csg}[run]
+⊢ { k² | k ∈ 1..10, k mod 2 = 1 }
+⊢ [ [i, j] | i, j ∈ 0..2, i < j ]
+⊢ { a + b | [a, b] ∈ [[1, 2], [3, 4]] }
+⊢ { r | x ∈ 1..4, r ≔ √x, r = ⌊r⌋ }
+\end{csg}
+
+\begin{csg}[run, id=grid]
+placa ≔ box(60, 60, 3)
+furos ≔ ⋃{ T(10i, 10j, 0) · cylinder(1.5 + (i + j)/4, 10) | i, j ∈ -2..2, (i + j) mod 2 = 0 }
+⊢ ground(placa ∖ furos)
+\end{csg}
+\csgfig{pre=grid&size=800x500&dist=0.85}{placa}{0.6}{Furos num padrão de tabuleiro, com diâmetro dependendo da posição.}
+
+\subsection{Grandes operadores}
+\code{⋃}, \code{⋂}, \code{Σ} e \code{∏} aplicam-se a uma coleção, ou a uma compreensão escrita no índice:
+\begin{csg}
+⋃ xs                 ⋃{ e | i ∈ A }           # sobre uma lista/compreensão
+⋃_{i ∈ A, cond} e    Σ_{k ∈ 1..n} k²          # índice com cláusulas
+Σ_{k=1}^{n} k²       ∏_{k=1}^{5} k            # forma clássica com limites
+\end{csg}
+\code{Σ} soma números ou vetores (\code{Σ} de vazio é 0); \code{∏} multiplica (de vazio é 1). O corpo de um grande
+operador vai até o próximo \code{+}, \code{-}, \code{∪} ou operador mais fraco: \code{Σ_{k=1}^{3} 2k + 1} é
+\code{(Σ 2k) + 1}, assim como na escrita matemática, em que $\sum_{k=1}^{3} 2k + 1 = 13$.
+\begin{csg}[run]
+⊢ Σ_{k=1}^{10} k², ∏_{k=1}^{5} k, Σ{ ⟨k, 0, 1⟩ | k ∈ 1..3 }
+anéis ≔ ⋃_{k ∈ 1..4} torus(8k, 1.5)
+⊢ anéis
+\end{csg}
+
+% =======================================================
+\section{Exemplos comentados}\label{sec:exemplos}
+Todos estão no menu \emph{Exemplos} da aplicação.
+
+\subsection{Engrenagem}
+\begin{csg}[run, id=gear]
+z ≔ 18; R ≔ 20; e ≔ 6
+dente  ≔ T(R, 0, 0) · hull(box(4, 3.4, e), T(3, 0, 0) · box(1, 1.4, e))
+dentes ≔ { Rz(k · τ/z) · dente | k ∈ 0..<z }
+alívios ≔ ⋃{ Rz(k · 60°) · T(12.5, 0, 0) · cylinder(3.5, 2e) | k ∈ 0..<6 }
+engrenagem ≔ reduce((∪), [cylinder(R, e)] ++ dentes)
+  ∖ alívios ∪ cylinder(r = 7, h = e + 4) ∖ prism(6, 3.2, 3e)
+⊢ ground(engrenagem)
+\end{csg}
+O dente trapezoidal é o fecho convexo de duas caixas. A compreensão gera as $z$ cópias giradas por múltiplos de
+$\tau/z$. Os alívios circulares são retirados da coroa, o cubo central é recolocado, e o furo hexagonal recebe uma porca ou um eixo sextavado.
+\csgfig{pre=gear&size=800x520&dist=0.8}{engrenagem}{0.6}{Engrenagem de 18 dentes.}
+
+\subsection{Vaso torcido}
+\begin{csg}[run, id=vase]
+n ≔ 36; h ≔ 2; parede ≔ 2
+perfil(k) ≔ 18 + 5·sin(k/6)
+camada(k, recuo) ≔ Tz(k·h) · Rz(k · 3°) · prism(6, perfil(k) - recuo, h + 0.01)
+vaso ≔ ⋃{ camada(k, 0) | k ∈ 0..<n } ∖ ⋃{ camada(k, parede) | k ∈ 1..n }
+⊢ ground(vaso)
+\end{csg}
+Cada camada é um prisma hexagonal girado 3° em relação à anterior, com raio dado por um perfil senoidal. As camadas se sobrepõem
+0,01\,mm para que a união seja um único sólido. O interior é a mesma pilha com raio menor, deslocada uma camada para cima: assim o
+fundo fica fechado e a boca aberta.
+\csgfig{pre=vase&size=800x600&dist=0.85}{vaso}{0.55}{Vaso torcido de 36 camadas.}
+
+\subsection{Caixa com tampa}
+\begin{csg}[run]
+caixa(l, w, h, e = 2) ≔
+  let externa ≔ box(l, w, h),
+      interna ≔ Tz(e) · box(l - 2e, w - 2e, h)
+  in externa ∖ interna
+folga ≔ 0.2
+fundo ≔ ground(caixa(60, 40, 30))
+tampa ≔ T(0, 50, 0) · ground(box(60, 40, 2)
+        ∪ Tz(2) · box(60 - 4 - 2folga, 40 - 4 - 2folga, 4)
+        ∖ Tz(2) · box(60 - 8, 40 - 8, 6))
+⊢ fundo, tampa
+\end{csg}
+Uma função parametrizada com espessura padrão. A tampa tem uma aba que entra na caixa com \code{folga} de
+0,2\,mm de cada lado. Os dois objetos nomeados são exportados separadamente (botão STL de cada um).
+
+% =======================================================
+\section{Do modelo à impressão 3D}\label{sec:impressao}
+
+\subsection{Exportando STL}
+Escolha o objeto no painel \textbf{Objetos} e clique em \textbf{STL} ao lado dele, ou use \emph{Arquivo → Exportar STL do objeto selecionado}.
+O arquivo recebe o nome do objeto (\code{peça.stl}). Expressões sem nome, exibidas com \code{⊢}, são exportadas como
+\code{modelo.stl}. Por padrão o formato é STL binário, compacto. Há também STL ASCII, legível, e a exportação de todos os
+objetos exibidos de uma vez. Para exportar uma variante, dê um nome a ela: \code{final ≔ ground(peça)}.
+
+\subsection{Garantias}
+Todo sólido produzido pelo núcleo é uma \textbf{variedade fechada e orientada}: cada aresta pertence a exatamente dois triângulos,
+e as normais apontam para fora. Não há furos nem faces invertidas, e o fatiador não precisa reparar a malha. As coordenadas estão em milímetros.
+
+\subsection{Recomendações}
+\begin{itemize}
+  \item \textbf{Apoie na mesa}: as primitivas são centradas na origem; use \code{ground(peça)} antes de exportar.
+  \item \textbf{Qualidade}: \emph{Avaliar → Qualidade} controla a resolução das curvas (rascunho, normal, fina). Use rascunho enquanto modela e
+    fina para exportar. Para um círculo específico, fixe \code{n}: \code{cylinder(2, 10, n = 64)}.
+  \item \textbf{Sobreposição}: ao subtrair um furo que atravessa a peça, faça a ferramenta ultrapassar as faces. Por exemplo,
+    \code{cylinder(2, h + 2)} para uma placa de altura $h$. Ao unir peças empilhadas, sobreponha-as um pouco.
+    O núcleo lida com faces coincidentes, mas a sobreposição deixa a intenção explícita.
+  \item \textbf{Folgas}: peças que se encaixam precisam de folga, tipicamente 0,1 a 0,3\,mm conforme a impressora. Parametrize-a.
+  \item \textbf{Espessuras mínimas}: paredes mais finas que duas larguras de extrusão (cerca de 0,8\,mm com bico de 0,4\,mm) tendem a falhar.
+  \item \textbf{Balanços}: superfícies inclinadas mais de \textasciitilde45° em relação à vertical precisam de suporte. Gire a peça com \code{Rx}/\code{Ry} para uma orientação favorável.
+  \item \textbf{Verifique}: a barra de status mostra as dimensões e o volume do objeto selecionado, e \code{⊢ size(peça)} imprime as medidas no painel de saída.
+\end{itemize}
+
+% =======================================================
+\section{Erros, limites e desempenho}\label{sec:erros}
+
+\subsection{Mensagens de erro}
+Erros de sintaxe são detectados antes da avaliação. Todos os erros de sintaxe do programa são listados de uma vez, e a
+visualização mantém o último modelo válido. Erros de avaliação são reportados por definição: uma constante com erro não impede
+as outras de serem calculadas, e as definições que dependem dela não repetem a mensagem. Exemplos típicos:
+\begin{longtable}{@{}L{0.48}L{0.52}@{}}
+\toprule
+\colhead{Mensagem} & \colhead{Causa provável} \\
+\midrule
+\emph{'x' não está definido} & nome digitado errado ou definição faltando \\
+\emph{'∪' não se aplica a sólido e número} & operandos de tipos incompatíveis \\
+\emph{… (aplicação parcial de cylinder, faltando h)} & faltou um argumento obrigatório \\
+\emph{cylinder não tem parâmetro 'q'} & argumento nomeado inexistente; a mensagem lista os válidos \\
+\emph{para interseção use ∩} & \code{A · B} entre dois sólidos \\
+\emph{a isometria vem à esquerda: g · S} & \code{A · g} em vez de \code{g · A} \\
+\emph{definição circular envolvendo 'a'} & \code{a} depende de si mesma \\
+\emph{recursão profunda demais} & recursão sem caso base alcançável \\
+\emph{esperava ')' …} & parêntese não fechado; veja a posição sublinhada \\
+\emph{tuplas não existem…} & \code{(a, b)} fora de lambda; use \code{[a, b]} \\
+\bottomrule
+\end{longtable}
+
+\subsection{Limites}
+Para proteger contra laços infinitos, há um limite de passos de avaliação (cerca de 20 milhões), de profundidade de
+recursão (400 chamadas aninhadas) e de tamanho de listas (um milhão de elementos). Além disso, uma avaliação longa é
+cancelada quando o programa é editado.
+
+\subsection{Desempenho}
+O núcleo manifold é rápido: os exemplos deste manual são avaliados em poucas dezenas de milissegundos. Para modelos grandes:
+\begin{itemize}
+  \item prefira \code{⋃ lista} a encadear \code{∪} um a um, pois a união de família é feita em lote;
+  \item use qualidade \emph{rascunho} durante a modelagem;
+  \item desligue \emph{Avaliar ao digitar} e avalie com \kbd{Ctrl}+\kbd{Enter};
+  \item funções como \code{volume} e \code{bounds} forçam o cálculo da geometria. Evite chamá-las dentro de laços grandes.
+\end{itemize}
+
+% =======================================================
+\section{Referência das funções embutidas}\label{sec:referencia}
+Gerada a partir do código da aplicação. Parâmetros marcados com \code{?} são opcionais. Todas as funções aceitam
+argumentos nomeados e aplicação parcial (exceto as de número variável de argumentos, marcadas com \code{…}).
+Constantes: \code{π pi τ tau e ∞ inf ∅ empty id Mx My Mz}.
+
+\InputIfFileExists{gen/functions.tex}{}{\emph{(execute \texttt{npm run manual} para gerar esta referência)}}
+
+% =======================================================
+\section{Tabela de símbolos}\label{sec:tabela}
+Gerada a partir do código da aplicação. Os atalhos funcionam no editor (seguidos de espaço, Tab ou pontuação) e também
+diretamente no código-fonte. A grafia ASCII é aceita pela linguagem. As letras gregas têm atalhos com o nome em inglês:
+\code{\alpha \beta \gamma \delta \epsilon \theta \lambda \mu \rho \sigma \phi \psi \omega} e maiúsculas
+\code{\Gamma \Delta \Theta \Lambda \Phi \Psi \Omega}.
+
+\InputIfFileExists{gen/symbols.tex}{}{\emph{(execute \texttt{npm run manual} para gerar esta tabela)}}
+
+% =======================================================
+\section{Gramática resumida}\label{sec:gramatica}
+\begin{csg}[plain]
+programa    ::= { instrução (fim-de-linha | ";") }
+instrução   ::= nome ("≔" | "=") expr
+              | nome "(" parâmetros ")" ("≔" | "=") expr
+              | "⊢" expr { "," expr }
+              | expr
+parâmetros  ::= [ nome { "," nome } ] { "," nome "=" expr }
+
+expr        ::= nome "↦" expr | "(" nomes ")" "↦" expr | "[" nomes "]" "↦" expr
+              | "if" expr "then" expr "else" expr
+              | "let" ligação { "," ligação } "in" expr
+              | expr op-binário expr | op-prefixo expr | expr pós-fixo
+              | grande-op expr | grande-op "_{" cláusulas "}" expr
+              | grande-op "_{" nome "=" expr "}^{" expr "}" expr
+              | número | nome | "true" | "false"
+              | "(" expr ")" | seção
+              | abre [ expr { "," expr } ] fecha
+              | abre expr "|" cláusulas fecha
+              | "⌊" expr "⌋" | "⌈" expr "⌉"
+pós-fixo    ::= "(" argumentos ")" | "[" expr "]" | "." nome | "°" | sobrescrito | "{" … "}"
+argumentos  ::= [ expr { "," expr } ] { "," nome "=" expr }
+cláusulas   ::= cláusula { "," cláusula }
+cláusula    ::= nome { "," nome } ("∈" | "in") expr | "[" nomes "]" ("∈" | "in") expr
+              | nome "≔" expr | expr
+seção       ::= "(" op ")" | "(" expr op ")" | "(" op expr ")"
+abre/fecha  ::= "[" "]" | "{" "}" | "⟨" "⟩"
+grande-op   ::= "⋃" | "⋂" | "Σ" | "∏"
+op-prefixo  ::= "-" | "√" | "¬"
+op-binário  ::= "|>" "∨" "∧" "=" "≠" "<" "≤" ">" "≥" "∈" "∉" "∪" "∖" "△" "∩" "⊕"
+                ".." "..<" "+" "-" "++" "·" "×" "/" "mod" "∘" "^"
+\end{csg}
+A precedência dos operadores binários está na seção~\ref{sec:precedencia}. Comentários (\code{#} até o fim da linha) e espaços são ignorados,
+exceto pelas regras de continuação de linha (seção~\ref{sec:linhas}) e de multiplicação implícita (seção~\ref{sec:numeros}).
+
+\end{document}

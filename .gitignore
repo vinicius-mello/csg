@@ -1,0 +1,4 @@
+node_modules/
+# gerados por npm run manual
+docs/build/
+docs/gen/

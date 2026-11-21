@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>render</title>
+<!-- Renders one program with the app's own viewer, for manual figures.
+     Query: ?ex=<example id> or ?src=<program>, &view=iso|front|top|right, &dist=<zoom factor> -->
+<style>html, body { margin: 0; height: 100%; background: #fff; } canvas { display: block; width: 100vw; height: 100vh; }</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script type="module">
+import { loadManifold, Kernel } from '../js/geom/kernel.js';
+import { run } from '../js/lang/interpreter.js';
+import { Viewer } from '../js/view/viewer.js';
+import { EXAMPLES } from '../js/examples.js';
+
+const COLORS = ['#5b8def', '#ef8a5b', '#56b97f', '#c47ade', '#e3c04f', '#4fc3c9', '#e8728f'];
+const q = new URLSearchParams(location.search);
+const src = q.get('src') ?? EXAMPLES.find((e) => e.id === q.get('ex')).source;
+const kernel = new Kernel(await loadManifold(), { minAngle: 4, minEdge: 0.3 });
+const result = run(src, kernel);
+if (result.errors.length) throw new Error(result.errors.map((e) => e.message).join('; '));
+const viewer = new Viewer(document.getElementById('c'));
+viewer.setTheme({ background: '#ffffff', grid: '#a0a6ae', wire: '#333333' });
+viewer.setOptions({ axes: q.get('axes') === '1', grid: q.get('grid') !== '0', wireframe: q.get('wire') === '1' });
+viewer.setMeshes(result.shows.filter((s) => s.solid).map((s, i) => {
+  const m = kernel.toMesh(s.solid);
+  return { ...m.toFlatArrays(), color: COLORS[i % COLORS.length], bbox: m.bbox() };
+}));
+viewer.setView(q.get('view') ?? 'iso');
+if (q.get('dist')) viewer.zoom(Number(q.get('dist')));
+viewer.render();
+document.title = 'ready';
+</script>
+</body>
+</html>
