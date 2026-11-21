@@ -24,8 +24,8 @@ if (result.errors.length) throw new Error(result.errors.map((e) => e.message).jo
 const viewer = new Viewer(document.getElementById('c'));
 viewer.setTheme({ background: '#ffffff', grid: '#a0a6ae', wire: '#333333' });
 viewer.setOptions({ axes: q.get('axes') === '1', grid: q.get('grid') !== '0', wireframe: q.get('wire') === '1' });
-viewer.setMeshes(result.shows.filter((s) => s.solid).map((s, i) => {
-  const m = kernel.toMesh(s.solid);
+viewer.setMeshes(result.shows.filter((s) => s.solid || s.profile).map((s, i) => {
+  const m = kernel.toMesh(s.solid ?? kernel.plate(s.profile));
   return { ...m.toFlatArrays(), color: COLORS[i % COLORS.length], bbox: m.bbox() };
 }));
 viewer.setView(q.get('view') ?? 'iso');

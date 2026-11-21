@@ -2,3 +2,5 @@ node_modules/
 # gerados por npm run manual
 docs/build/
 docs/gen/
+# vídeos gerados por tools/record-demo.mjs
+demo/out/

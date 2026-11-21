@@ -1,0 +1,72 @@
+// Lição 5 — Números e parâmetros
+// Gravar com: npm run demo 05-numeros-e-parametros
+
+trilha: ~/code/Schumann/scn15_5.mid ~/code/Schumann/scn15_1.mid ~/code/Schumann/scn15_13.mid
+
+título: Lição 5 | Números e parâmetros
+
+tópico: Uma calculadora
+legenda: Antes de modelar, a linguagem é uma calculadora. O resultado de ⊢ aparece no painel de saída.
+digitar: \show 2 + 3 \cdot 4
+destacar: output
+legenda: As regras de precedência são as da matemática: primeiro o produto, depois a soma.
+destacar: -
+enter
+digitar: \show \pi, 180\deg, 2^10, \sqrt(2)
+destacar: output
+legenda: π, e 180° vale π: os ângulos são medidos em radianos. Depois, uma potência e uma raiz quadrada.
+destacar: -
+
+tópico: Nomes para números
+legenda: Um número também pode ter nome. Vamos modelar um anel com raio externo R e espessura e.
+limpar
+digitar: R := 15
+enter
+digitar: e := 3
+enter
+digitar: anel := cylinder(R, e) \setminus cylinder(R - 5, 2e)
+legenda: `2e` é 2 vezes e: um número colado a um nome multiplica, como na escrita matemática.
+legenda: O furo tem o dobro da altura para atravessar o anel com folga.
+enter
+enter
+digitar: \show anel
+girar: 60 3
+
+tópico: Um modelo paramétrico
+legenda: A grande vantagem: para mudar o modelo, basta mudar um número.
+selecionar: R ≔ 15
+digitar: R := 25
+legenda: Tudo o que depende de R foi recalculado.
+selecionar: e ≔ 3
+digitar: e := 6
+legenda: O mesmo com a espessura e.
+girar: 60 3
+
+tópico: Medindo
+legenda: A linguagem também mede: `volume` dá o volume em mm³.
+cursor: ⊢ anel
+enter
+digitar: \show volume(anel), \pi \cdot (R\sq - (R - 5)\sq) \cdot e
+destacar: output
+legenda: Os dois quase coincidem: o computador aproxima o círculo por um polígono de muitos lados.
+destacar: -
+legenda: Para digitar o expoente ², use `\sq`, ou `^2`.
+
+tópico: A ordem não importa
+legenda: As definições são equações, não uma lista de ordens: um nome pode ser usado antes de ser definido.
+cursor: início
+digitar: \show anel↵
+destacar: editor
+legenda: Funciona mesmo com ⊢ anel na primeira linha.
+destacar: -
+
+tópico: Experimente
+legenda: Experimente fazer um anel bem fino: R = 30 e e = 1.
+selecionar: R ≔ 25
+digitar: R := 30
+selecionar: e ≔ 6
+digitar: e := 1
+girar: 90 3
+legenda: -
+
+título: Fim da lição 5 | Próxima lição: funções

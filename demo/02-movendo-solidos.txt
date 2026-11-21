@@ -1,0 +1,76 @@
+// Lição 2 — Movendo sólidos: translações e rotações
+// Gravar com: npm run demo 02-movendo-solidos
+
+trilha: ~/code/Schumann/scn15_10.mid ~/code/Schumann/scn15_13.mid ~/code/Schumann/scn15_8.mid
+
+título: Lição 2 | Movendo sólidos: translações e rotações
+
+tópico: Ponto de partida
+legenda: Na lição 1, todo sólido nascia centrado na origem.
+digitar: A := cube(10)
+legenda: Hoje vamos movê-los sem deformar: deslocar e girar.
+
+tópico: Translação
+legenda: `T(x, y, z)` desloca um sólido: x mm na direção do eixo x, y na de y e z na de z.
+enter
+digitar: B := T(20, 0, 0) \cdot cube(10)
+legenda: O ponto · significa “aplicar”: o deslocamento T(20, 0, 0) aplicado ao cubo.
+legenda: Para digitar ·, use `\cdot` seguido de espaço, a paleta, ou simplesmente `*`.
+enter
+enter
+digitar: \show A, B
+legenda: B é o mesmo cubo, 20 mm adiante no eixo x, o eixo vermelho.
+
+tópico: Um eixo de cada vez
+legenda: Para deslocar num só eixo há atalhos: `Tx`, `Ty` e `Tz`.
+cursor: T(20, 0, 0) · cube(10)
+enter
+digitar: C := Tz(15) \cdot cube(10)
+cursor: ⊢ A, B
+digitar: , C
+legenda: `Tz(15)` levanta o cubo 15 mm, na direção do eixo z, o azul.
+girar: 60 3
+
+tópico: Apoiando na mesa
+legenda: Lembra que metade do cubo ficava abaixo da mesa? Basta subir metade da aresta.
+selecionar: A ≔ cube(10)
+digitar: A := Tz(5) \cdot cube(10)
+vista: low
+legenda: Agora A está apoiado na mesa, o plano z = 0.
+vista: iso
+legenda: A função `ground` faz isso por nós, para qualquer sólido.
+selecionar: C ≔ Tz(15) · cube(10)
+digitar: C := Ty(20) \cdot ground(sphere(6))
+legenda: `ground` apoia a esfera na mesa, e `Ty(20)` a leva 20 mm na direção do eixo y, o verde.
+
+tópico: Rotação
+legenda: `Rz(θ)` gira um sólido em torno do eixo z, o eixo vertical.
+cursor: sphere(6))
+enter
+digitar: E := Tx(-20) \cdot Rz(30\deg) \cdot ground(cube(10))
+cursor: ⊢ A, B, C
+digitar: , E
+legenda: Ângulos em graus levam o símbolo °. Digite `\deg` ou use a paleta.
+legenda: Leia da direita para a esquerda: apoia o cubo, gira 30° e depois desloca −20 em x.
+vista: top
+legenda: Visto de cima: o cubo E está girado 30° em relação aos outros.
+vista: iso
+legenda: Também existem `Rx` e `Ry`, que giram em torno dos eixos x e y.
+cursor: cube(10))
+enter
+digitar: F := Ty(-20) \cdot Tz(3) \cdot Rx(90\deg) \cdot cylinder(3, 20)
+cursor: ⊢ A, B, C, E
+digitar: , F
+legenda: `Rx(90°)` deita o cilindro e `Tz(3)` o apoia na mesa, já que o raio é 3.
+girar: -90 4
+
+tópico: Experimente
+legenda: Experimente girar o cubo E por 45° em vez de 30°.
+selecionar: 30
+digitar: 45
+vista: top
+legenda: Translações e rotações não deformam o sólido. Em matemática elas se chamam isometrias.
+vista: iso
+legenda: -
+
+título: Fim da lição 2 | Próxima lição: compondo movimentos

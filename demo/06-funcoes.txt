@@ -1,0 +1,63 @@
+// Lição 6 — Funções
+// Gravar com: npm run demo 06-funcoes
+
+trilha: ~/code/Schumann/scn15_8.mid ~/code/Schumann/scn15_4.mid ~/code/Schumann/scn15_10.mid
+
+título: Lição 6 | Funções
+
+tópico: Repetir dá trabalho
+legenda: Vamos fazer uma placa redonda com furos iguais, girados em torno do centro.
+digitar: base := cylinder(25, 4)
+enter
+digitar: peça := base \setminus Tx(18) \cdot cylinder(3, 10)
+enter
+digitar: ␣       \setminus Rz(90\deg) \cdot Tx(18) \cdot cylinder(3, 10)
+enter
+enter
+digitar: \show peça
+legenda: Funciona, mas cada furo repete quase tudo. Com quatro furos ficaria ainda pior.
+legenda: Em matemática, quando algo se repete variando um valor, definimos uma função.
+
+tópico: Definindo uma função
+cursor: cylinder(25, 4)
+enter
+digitar: furo(\theta) := Rz(\theta) \cdot Tx(18) \cdot cylinder(3, 10)
+legenda: furo(θ) é o furo girado do ângulo θ. A letra θ se digita com `\theta`.
+legenda: Agora a peça fica mais curta e mais clara:
+selecionar: Tx(18) · cylinder(3, 10)↵        ∖ Rz(90°) · Tx(18) · cylinder(3, 10)
+digitar: furo(0\deg) \setminus furo(90\deg)↵        \setminus furo(180\deg) \setminus furo(270\deg)
+legenda: Lê-se como na matemática: a base menos o furo em 0°, menos o furo em 90°...
+girar: 90 3
+legenda: E para mudar todos os furos, basta mudar a função. Vamos aumentar o raio para 5.
+selecionar: cylinder(3, 10)
+digitar: cylinder(5, 10)
+girar: 90 3
+
+tópico: Vários parâmetros
+legenda: Uma função pode ter vários parâmetros. Uma arruela: furo de diâmetro d, diâmetro externo D.
+cursor: furo(270°)
+enter
+digitar: arruela(d, D) :=↵  cylinder(D/2, 2) \setminus cylinder(d/2, 5)
+selecionar: ⊢ peça
+digitar: ⊢ arruela(6, 14), Tx(25) \cdot arruela(10, 20)
+legenda: Cada chamada usa seus próprios valores de d e D.
+
+tópico: Valores padrão
+legenda: Se não dissermos D, que seja o dobro do furo: escrevemos isso na própria definição.
+selecionar: arruela(d, D)
+digitar: arruela(d, D = 2d)
+cursor: arruela(10, 20)
+enter
+digitar: \show Tx(50) \cdot arruela(8)
+legenda: arruela(8) usa D = 16 automaticamente.
+girar: 60 3
+
+tópico: Experimente
+legenda: Experimente mudar o padrão para três vezes o furo: D = 3d.
+selecionar: D = 2d
+digitar: D = 3d
+legenda: Só a arruela que usa o valor padrão mudou.
+girar: 60 3
+legenda: -
+
+título: Fim da lição 6 | Próxima lição: repetições e compreensões

@@ -1,0 +1,80 @@
+// Lição 7 — Repetições: compreensões e famílias
+// Gravar com: npm run demo 07-compreensoes
+
+trilha: ~/code/Schumann/scn15_1.mid ~/code/Schumann/scn15_13.mid ~/code/Schumann/scn15_12.mid
+
+título: Lição 7 | Repetições: compreensões e famílias
+
+tópico: Conjuntos por compreensão
+legenda: Em matemática escrevemos { k² | k ∈ {1, …, 5} }: “os k² tais que k está entre 1 e 5”.
+digitar: \show { k^2 | k \in 1..5 }
+destacar: output
+legenda: A linguagem escreve do mesmo jeito. `1..5` é o intervalo de 1 a 5, e ∈ se digita com `\in`.
+destacar: -
+enter
+digitar: \show { k | k \in 1..20, k mod 3 = 0 }
+destacar: output
+legenda: Depois da vírgula, uma condição filtra os valores: aqui, os múltiplos de 3 até 20.
+destacar: -
+
+tópico: Uma família de sólidos
+legenda: O mesmo vale para sólidos. Lembra da função furo, da lição 6?
+limpar
+digitar: furo(\theta) := Rz(\theta) \cdot Tx(18) \cdot cylinder(3, 10)
+enter
+digitar: furos := { furo(k \cdot 45\deg) | k \in 0..<8 }
+legenda: Oito furos, com k de 0 a 7 (`0..<8` exclui o 8), cada um girado k · 45°.
+legenda: O símbolo ⋃ une todos os sólidos de uma família, como a união indexada de conjuntos.
+cursor: furos ≔␣
+paleta: ⋃
+cursor: 0..<8 }
+enter
+digitar: base := cylinder(25, 4)
+enter
+digitar: peça := base \setminus furos
+enter
+enter
+digitar: \show peça
+legenda: Oito furos com uma única linha.
+girar: 60 3
+
+tópico: Quantos furos?
+legenda: Com um parâmetro n, o ângulo entre os furos passa a ser 360°/n.
+cursor: início
+digitar: n := 8↵
+selecionar: k · 45°) | k ∈ 0..<8
+digitar: k \cdot 360\deg/n) | k \in 0..<n
+legenda: Agora basta mudar n.
+selecionar: n ≔ 8
+digitar: n := 12
+girar: 60 3
+selecionar: n ≔ 12
+digitar: n := 5
+girar: 60 3
+
+tópico: Dois índices
+legenda: Com dois índices, i e j, obtemos uma grade. Como laços encaixados, mas escritos como conjunto.
+limpar
+digitar: placa := box(50, 50, 3)
+enter
+digitar: grade := \bigcup{ T(10i, 10j, 0) \cdot cylinder(2, 10)↵           | i, j \in -2..2 }
+enter
+enter
+digitar: \show placa \setminus grade
+legenda: i e j vão de −2 a 2: são 5 × 5 = 25 furos. `10i` é 10 vezes i.
+vista: top
+legenda: Uma condição transforma a grade num tabuleiro de xadrez: só onde i + j é par.
+selecionar: -2..2 }
+digitar: -2..2, (i + j) mod 2 = 0 }
+vista: iso
+
+tópico: Experimente
+legenda: Experimente fazer o raio do furo crescer à medida que i se afasta de 0.
+selecionar: cylinder(2, 10)
+digitar: cylinder(1 + abs(i), 10)
+vista: top
+legenda: Cada furo agora depende de onde ele está.
+vista: iso
+legenda: -
+
+título: Fim da lição 7 | Próxima lição: do modelo à impressora

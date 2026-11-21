@@ -1,0 +1,98 @@
+// Lição 1 — O primeiro sólido
+// Roteiro do tutorial em vídeo (sintaxe em js/demo.js). Gravar com:
+//   node tools/record-demo.mjs 01-primeiro-solido
+
+trilha: ~/code/Schumann/scn15_10.mid ~/code/Schumann/scn15_1.mid
+
+título: Lição 1 | O primeiro sólido
+
+tópico: A tela
+legenda: Nesta série vamos descrever sólidos com a linguagem da matemática e imprimi-los em 3D.
+destacar: editor
+legenda: À esquerda fica o editor: é onde escrevemos o modelo.
+destacar: view
+legenda: À direita está a mesa da impressora. Tudo o que definirmos aparece aqui.
+destacar: palette
+legenda: No alto, uma paleta com os símbolos matemáticos da linguagem.
+destacar: -
+
+tópico: Um cubo
+legenda: Vamos começar com um cubo de aresta 10 mm.
+digitar: cube(10)
+legenda: Pronto: `cube(10)` é um cubo de aresta 10. As medidas são sempre em milímetros.
+girar: 120 4
+legenda: O cubo está centrado na origem, onde os três eixos se cruzam.
+vista: low
+legenda: Por isso metade dele fica abaixo da mesa. Mais adiante veremos como apoiá-lo.
+vista: iso
+
+tópico: Dando um nome
+legenda: Em matemática damos nomes aos objetos: “seja A o cubo de aresta 10”.
+cursor: início
+digitar: A :=␣
+legenda: Digitamos `A` seguido de `:=`, e o editor escreve ≔, que se lê “é definido como”.
+legenda: Agora A é um objeto nomeado: ele aparece no painel de objetos.
+destacar: objects
+legenda: É por este painel, no botão STL, que exportamos A para a impressora.
+destacar: -
+
+tópico: Escolhendo o que mostrar
+legenda: O símbolo ⊢ escolhe o que a mesa mostra. Para digitá-lo, escreva `\show` e um espaço.
+cursor: fim
+enter
+enter
+digitar: \show A
+legenda: Os atalhos imitam o LaTeX. Também dá para clicar no símbolo na paleta.
+
+tópico: Outras formas
+legenda: Agora uma esfera de raio 6. Vamos chamá-la de `B`.
+cursor: cube(10)
+enter
+digitar: B := sphere(6)
+legenda: B já existe, mas a mesa só mostra o que está depois do ⊢. Vamos acrescentar B.
+cursor: ⊢ A
+digitar: , B
+legenda: A e B estão os dois centrados na origem, por isso se sobrepõem.
+girar: 90 3
+legenda: Um cilindro: `cylinder(r, h)` tem raio r e altura h, e fica em pé ao longo do eixo z.
+cursor: sphere(6)
+enter
+digitar: C := cylinder(3, 20)
+cursor: ⊢ A, B
+digitar: , C
+legenda: O cilindro de raio 3 e altura 20 atravessa o cubo e a esfera.
+
+tópico: Um furo
+legenda: Uma prévia da lição 4: o símbolo ∖ é a diferença de conjuntos.
+cursor: cylinder(3, 20)
+enter
+digitar: D := A \setminus C
+legenda: `D` são os pontos do cubo que não estão no cilindro.
+selecionar: ⊢ A, B, C
+digitar: ⊢ D
+legenda: Ou seja, um cubo furado!
+girar: 160 5
+vista: top
+legenda: Visto de cima, o furo atravessa o cubo de lado a lado.
+vista: iso
+
+tópico: Errar faz parte
+legenda: E se esquecermos um parêntese?
+selecionar: sphere(6)
+digitar: sphere(6
+destacar: output
+legenda: A linha com erro fica marcada em vermelho, e a mensagem aparece aqui embaixo.
+legenda: Enquanto houver erro, a mesa continua mostrando o último modelo válido.
+destacar: -
+digitar: )
+legenda: Basta fechar o parêntese e tudo volta ao normal.
+
+tópico: Experimente
+legenda: Experimente mudar a aresta do cubo para 15 e veja o que acontece com o furo.
+selecionar: cube(10)
+digitar: cube(15)
+girar: 90 3
+legenda: Mudou uma definição, e tudo o que depende dela mudou junto.
+legenda: -
+
+título: Fim da lição 1 | Próxima lição: movendo sólidos com translações e rotações

@@ -1,0 +1,89 @@
+// Lição 4 — União, interseção e diferença
+// Gravar com: npm run demo 04-uniao-intersecao-diferenca
+
+trilha: ~/code/Schumann/scn15_13.mid ~/code/Schumann/scn15_8.mid
+
+título: Lição 4 | União, interseção e diferença
+
+tópico: Sólidos são conjuntos
+legenda: Um sólido é um conjunto de pontos do espaço. Então podemos fazer com eles o que fazemos com conjuntos.
+digitar: A := cube(12)
+enter
+digitar: B := T(5, 5, 5) \cdot sphere(8)
+enter
+enter
+digitar: \show A, B
+legenda: A é um cubo e B uma esfera que invade um canto dele.
+
+tópico: União
+legenda: A ∪ B são os pontos que estão em A ou em B. Digite `\cup`.
+cursor: sphere(8)
+enter
+digitar: U := A \cup B
+selecionar: ⊢ A, B
+digitar: ⊢ U
+legenda: Os dois viram um só sólido.
+girar: 90 3
+
+tópico: Interseção
+legenda: A ∩ B são os pontos que estão em A e em B ao mesmo tempo. Digite `\cap`.
+cursor: A ∪ B
+enter
+digitar: I := A \cap B
+selecionar: ⊢ U
+digitar: ⊢ I
+legenda: Sobra só a parte comum: um pedaço de esfera cortado pelas faces do cubo.
+girar: 90 3
+
+tópico: Diferença
+legenda: A ∖ B são os pontos de A que não estão em B. Digite `\setminus`.
+cursor: A ∩ B
+enter
+digitar: D := A \setminus B
+selecionar: ⊢ I
+digitar: ⊢ D
+legenda: A esfera “morde” o cubo.
+girar: 90 3
+legenda: Cuidado: a ordem importa. B ∖ A é a esfera sem o cubo, outro sólido.
+
+tópico: Lado a lado
+legenda: Vamos ver os três resultados juntos, afastados com translações.
+selecionar: ⊢ D
+digitar: ⊢ U, Tx(30) \cdot I, Tx(60) \cdot D
+legenda: União, interseção e diferença: os diagramas de Venn, agora em três dimensões.
+girar: 40 3
+
+tópico: Um dado
+legenda: Juntando tudo: a interseção de um cubo com uma esfera dá um cubo de cantos arredondados.
+cursor: A ∖ B
+enter
+enter
+digitar: dado := cube(16) \cap sphere(11)
+selecionar: ⊢ U, Tx(30) · I, Tx(60) · D
+digitar: ⊢ dado
+legenda: Agora vamos furá-lo com três cilindros, um em cada eixo.
+cursor: sphere(11)
+enter
+digitar: furos := cylinder(4, 30) \cup Rx(90\deg) \cdot cylinder(4, 30)
+enter
+digitar: ␣       \cup Ry(90\deg) \cdot cylinder(4, 30)
+legenda: Uma definição pode continuar na linha de baixo: basta começá-la com espaços.
+enter
+digitar: peça := dado \setminus furos
+selecionar: ⊢ dado
+digitar: ⊢ peça
+girar: 120 5
+legenda: Primeiro aplicamos as rotações, depois as uniões. Na dúvida, use parênteses.
+
+tópico: Experimente
+legenda: Experimente trocar o raio dos furos de 4 para 6.
+selecionar: cylinder(4
+digitar: cylinder(6
+selecionar: cylinder(4
+digitar: cylinder(6
+selecionar: cylinder(4
+digitar: cylinder(6
+girar: 90 3
+legenda: -
+
+título: Fim da lição 4 | Próxima lição: números e parâmetros

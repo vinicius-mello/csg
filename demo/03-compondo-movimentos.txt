@@ -1,0 +1,77 @@
+// Lição 3 — Compondo movimentos
+// Gravar com: npm run demo 03-compondo-movimentos
+
+trilha: ~/code/Schumann/scn15_1.mid ~/code/Schumann/scn15_4.mid ~/code/Schumann/scn15_12.mid
+
+título: Lição 3 | Compondo movimentos
+
+tópico: Movimentos têm nome
+legenda: Um movimento também é um valor: podemos dar um nome a ele, como a um número.
+digitar: A := ground(cube(10))
+enter
+digitar: g := Tx(25) \circ Rz(45\deg)
+legenda: O símbolo ∘ é a composição, como em (f ∘ h)(x) = f(h(x)). Digite `\circ`.
+legenda: g primeiro gira 45° e depois desloca 25 em x: a da direita age primeiro.
+enter
+digitar: B := g \cdot A
+enter
+enter
+digitar: \show A, B
+legenda: B é a imagem de A pelo movimento g.
+
+tópico: A ordem importa
+legenda: E se trocarmos a ordem? Primeiro deslocar, depois girar.
+cursor: Rz(45°)
+enter
+digitar: h := Rz(45\deg) \circ Tx(25)
+cursor: g · A
+enter
+digitar: C := h \cdot A
+cursor: ⊢ A, B
+digitar: , C
+legenda: h desloca o cubo e depois gira tudo em torno da origem, e o cubo vai parar em outro lugar.
+vista: top
+legenda: Visto de cima: B e C são diferentes. A composição não é comutativa, g ∘ h ≠ h ∘ g.
+vista: iso
+cursor: fim
+enter
+digitar: \show g = h
+destacar: output
+legenda: A própria linguagem confirma: g = h é falso.
+destacar: -
+
+tópico: Movimentos agem em pontos
+legenda: Movimentos também agem em pontos. Um ponto se escreve ⟨x, y, z⟩; os parênteses angulares estão na paleta.
+enter
+digitar: \show Rz(90\deg) \cdot␣
+paleta: ⟨
+digitar: 10, 0, 0
+destacar: output
+legenda: Girar 90° em torno do eixo z leva o ponto (10, 0, 0) ao ponto (0, 10, 0).
+destacar: -
+
+tópico: Potências e inversa
+legenda: Repetir um movimento é uma potência: quatro rotações de 90° dão uma volta completa.
+cursor: fim
+enter
+digitar: \show Rz(90\deg)^4 = id
+destacar: output
+legenda: `id` é a identidade, o movimento que não move nada.
+destacar: -
+legenda: Todo movimento tem um inverso, que o desfaz. Digite `\inv` para o símbolo ⁻¹.
+enter
+digitar: \show g\inv \circ g = id
+destacar: output
+legenda: Desfazer o que g fez nos devolve à identidade. Os movimentos formam um grupo!
+destacar: -
+
+tópico: Experimente
+legenda: Experimente mudar a ordem em g e veja B trocar de lugar com C.
+selecionar: Tx(25) ∘ Rz(45°)
+digitar: Rz(45\deg) \circ Tx(25)
+vista: top
+legenda: Agora g = h, e B coincide com C.
+vista: iso
+legenda: -
+
+título: Fim da lição 3 | Próxima lição: união, interseção e diferença

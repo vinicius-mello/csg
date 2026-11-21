@@ -1,0 +1,107 @@
+// Lição 10 — Perfis: extrusão e revolução
+// Gravar com: npm run demo 10-perfis
+
+trilha: ~/code/Schumann/scn15_1.mid ~/code/Schumann/scn15_13.mid ~/code/Schumann/scn15_8.mid
+
+título: Lição 10 | Perfis: extrusão e revolução
+
+tópico: Perfis: regiões do plano
+legenda: Muitas peças são mais fáceis de desenhar no plano. Um perfil é uma região do plano z = 0.
+digitar: P := circle(15) \setminus square(10)
+enter
+enter
+digitar: \show P
+legenda: Um disco menos um quadrado. Um perfil aparece como uma placa fina sobre a mesa.
+destacar: status
+legenda: Em vez do volume, a barra de status mostra a área.
+destacar: -
+vista: top
+legenda: Com `polygon`, o perfil é a região limitada por uma poligonal: uma lista de pontos [x, y].
+selecionar: circle(15) ∖ square(10)
+digitar: polygon([[0, 0], [30, 0], [30, 8],↵                 [8, 8], [8, 30], [0, 30]])
+pausa: 1.5
+vista: iso
+
+tópico: Extrusão
+legenda: `extrude(P, h)` empilha o perfil de z = 0 até a altura h, formando um prisma.
+selecionar: ⊢ P
+digitar: ⊢ extrude(P, 10)
+girar: 60 3
+legenda: Mais dois argumentos torcem o topo e mudam o seu tamanho.
+limpar
+digitar: Q := square(20)
+enter
+enter
+digitar: \show extrude(Q, 40, 90\deg)
+legenda: Torcido 90°: cada fatia horizontal é uma cópia girada do quadrado.
+girar: 60 3
+selecionar: 90°)
+digitar: 90\deg, 0.5)
+legenda: Com escala 0.5, o topo fica com metade do tamanho.
+girar: 60 3
+selecionar: 90°, 0.5)
+digitar: 0\deg, 0)
+legenda: Sem torção e com escala 0, o topo vira um ponto: uma pirâmide.
+girar: 60 3
+
+tópico: Uma estrela por compreensão
+legenda: Os vértices de uma estrela alternam entre dois raios. Uma compreensão gera todos eles.
+limpar
+velocidade: 1.5
+digitar: estrela := polygon([\rho \cdot [cos(\theta), sin(\theta)]↵    | k \in 0..<10, \theta := k \cdot 36\deg,↵      \rho := if k mod 2 = 0 then 20 else 9])
+velocidade: 1
+legenda: Dez vértices, de 36° em 36°: raio 20 nos pares e 9 nos ímpares. A letra ρ se digita com `\rho`.
+enter
+enter
+digitar: \show extrude(estrela, 50, 72\deg)
+girar: 72 4
+legenda: `offset(P, d)` engorda o perfil de d e arredonda os cantos.
+selecionar: extrude(estrela,
+digitar: extrude(offset(estrela, 2),
+girar: 72 4
+
+tópico: Revolução
+legenda: `revolve(P)` gira o perfil em torno do eixo y, que vira o eixo z: o ponto [x, y] descreve um círculo de raio x.
+limpar
+digitar: P := Tx(15) \cdot circle(5)
+enter
+enter
+digitar: \show P
+legenda: Um disco de raio 5, a 15 do eixo...
+selecionar: ⊢ P
+digitar: ⊢ revolve(P)
+legenda: ...girado, vira um toro.
+girar: 60 3
+legenda: Com um ângulo menor que 360°, a revolução fica aberta.
+selecionar: revolve(P)
+digitar: revolve(P, 270\deg)
+girar: 60 3
+
+tópico: Um vaso: o raio em função da altura
+legenda: Num vaso, o raio é uma função da altura, r(z). O perfil fica entre o eixo e o gráfico de r.
+limpar
+velocidade: 1.5
+digitar: r(z) := 20 + 7sin(z/10) + z/6↵H := 80↵fora := polygon([[0, 0]] ++ [[r(z), z] | z \in 0..H]↵              ++ [[0, H]])↵oco := polygon([[0, 2]] ++ [[r(z) - 2, z] | z \in 2..H]↵             ++ [[0, H]])
+velocidade: 1
+legenda: `fora` é o perfil cheio; `oco` é o mesmo perfil 2 mm para dentro, acima do fundo.
+enter
+enter
+digitar: \show revolve(fora \setminus oco)
+girar: 90 4
+legenda: Girando só 270°, vemos a parede e o fundo.
+selecionar: oco)
+digitar: oco, 270\deg)
+girar: 90 4
+
+tópico: Volume e integral
+legenda: O vaso cheio é uma pilha de discos finos: o volume é aproximadamente Σ π r(z)² Δz, uma soma de Riemann.
+enter
+digitar: \show volume(revolve(fora))↵\show Σ[\pi \cdot r(z + 0.5)^2 | z \in 0..<H]
+destacar: output
+legenda: As duas contas quase coincidem: as duas aproximam a integral π∫r(z)² dz.
+destacar: -
+legenda: No manual há mais: `region`, o método das cascas e o teorema de Pappus.
+girar: 180 6
+legenda: -
+
+título: Fim | CSG: vinicius-mello.github.io/csg

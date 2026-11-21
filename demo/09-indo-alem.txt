@@ -1,0 +1,78 @@
+// Lição 9 — Indo além: recursão, simetria e superfícies
+// Gravar com: npm run demo 09-indo-alem
+
+trilha: ~/code/Schumann/scn15_13.mid ~/code/Schumann/scn15_8.mid ~/code/Schumann/scn15_1.mid
+
+título: Lição 9 | Indo além: recursão, simetria e superfícies
+
+tópico: Recursão: a esponja de Menger
+legenda: Uma função pode chamar a si mesma. Na esponja de Menger, cada cubo vira 20 cubos três vezes menores.
+velocidade: 1.5
+digitar: menger(k, s) :=↵  if k = 0 then cube(s)↵  else \bigcup{ T((s/3) \cdot [i, j, l]) \cdot menger(k - 1, s/3)↵        | i, j, l \in -1..1,↵          abs(i) + abs(j) + abs(l) > 1 }
+velocidade: 1
+legenda: Se k = 0, é só um cubo. Senão, une os cubos menores fora do centro e dos centros das faces.
+enter
+enter
+digitar: \show menger(0, 54)
+legenda: Nível 0: um cubo.
+selecionar: menger(0, 54)
+digitar: menger(1, 54)
+legenda: Nível 1: 20 cubos.
+selecionar: menger(1, 54)
+digitar: menger(2, 54)
+legenda: Nível 2: 400 cubos, definidos em quatro linhas.
+girar: 120 5
+
+tópico: Simetria
+legenda: Um grupo de simetria é uma lista de movimentos. D₄, o grupo do quadrado, tem 4 rotações e 4 reflexões.
+limpar
+digitar: D\_4 := { Rz(k \cdot 90\deg) \circ s | k \in 0..3, s \in [id, My] }
+legenda: Cada rotação de 90°, composta ou não com a reflexão My. O índice ₄ se digita com `\_4`.
+enter
+digitar: motivo := T(14, 5, 0) \cdot Rz(25\deg) \cdot box(12, 3, 4)
+enter
+enter
+digitar: \show motivo
+legenda: Um motivo sem simetria nenhuma.
+cursor: box(12, 3, 4)
+enter
+digitar: roseta := \bigcup{ g \cdot motivo | g \in D\_4 }
+selecionar: ⊢ motivo
+digitar: ⊢ roseta
+vista: top
+legenda: A união das imagens do motivo pelos 8 movimentos tem exatamente a simetria do quadrado.
+legenda: Sem as reflexões, sobra o grupo das rotações, e a figura passa a “girar” num só sentido.
+selecionar: [id, My]
+digitar: [id]
+pausa: 2
+selecionar: [id]
+digitar: [id, My]
+vista: iso
+
+tópico: Superfícies: o hiperboloide de fios
+legenda: Para terminar, um modelo de fios como os do século XIX: o hiperboloide de uma folha.
+limpar
+velocidade: 2
+legenda: (digitação acelerada)
+digitar: \alpha := 120\deg; n := 24; R := 20; H := 40↵p(\theta, z) :=␣
+paleta: ⟨
+digitar: R \cdot cos(\theta), R \cdot sin(\theta), z
+direita: 1
+digitar: ↵fio(a, b) := hull(T(a) \cdot sphere(0.8),↵                 T(b) \cdot sphere(0.8))
+enter
+digitar: fios := \bigcup{ fio(p(\theta, 0), p(\theta + s \cdot \alpha, H))↵         | k \in 0..<n, \theta := k \cdot \tau/n, s \in {-1, 1} }
+enter
+digitar: anel := cylinder(R + 2, 2) \setminus cylinder(R - 2, 3)↵↵\show fios \cup anel \cup Tz(H) \cdot anel
+velocidade: 1
+legenda: p(θ, z) é um ponto do círculo de raio R na altura z. Cada fio liga θ embaixo a θ ± α em cima.
+legenda: `hull` é o fecho convexo: de duas esferas pequenas, ele faz um fio.
+girar: 180 6
+legenda: Retas que formam uma superfície curva: o hiperboloide é duplamente regrado.
+
+tópico: Para continuar
+legenda: Há muito mais no manual: escalas, poliedros, funções anônimas, grandes operadores...
+legenda: E no menu Exemplos há modelos prontos para estudar e modificar. Bons estudos!
+girar: 180 6
+legenda: -
+
+título: Fim | CSG: vinicius-mello.github.io/csg

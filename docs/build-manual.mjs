@@ -56,6 +56,7 @@ async function checkPrograms(list) {
 // ---------- 2. generated reference ----------
 const CATEGORIES = [
   ['Primitivas', ['cube', 'box', 'sphere', 'cylinder', 'cone', 'torus', 'prism', 'polyhedron', 'hull', 'minkowski']],
+  ['Perfis (regiões do plano)', ['circle', 'square', 'polygon', 'region', 'offset', 'extrude', 'revolve']],
   ['Isometrias', ['T', 'Tx', 'Ty', 'Tz', 'Rx', 'Ry', 'Rz', 'R', 'M']],
   ['Escalas e transformações afins', ['S', 'scale', 'Sx', 'Sy', 'Sz', 'at', 'inverse', 'isometry']],
   ['Sólidos: consultas e posicionamento', ['union', 'intersection', 'bounds', 'size', 'volume', 'area', 'isempty', 'center', 'ground']],

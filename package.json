@@ -6,7 +6,8 @@
     "test": "node --test tests/",
     "serve": "python3 -m http.server 8000",
     "vendor": "mkdir -p vendor/manifold && cp node_modules/manifold-3d/manifold.js node_modules/manifold-3d/manifold.wasm node_modules/manifold-3d/LICENSE vendor/manifold/",
-    "manual": "node docs/build-manual.mjs"
+    "manual": "node docs/build-manual.mjs",
+    "demo": "node tools/record-demo.mjs"
   },
   "devDependencies": {
     "manifold-3d": "^3.5.5"

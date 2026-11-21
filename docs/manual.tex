@@ -368,6 +368,7 @@ booleano & \code{true}, \code{false}, resultados de comparações \\
 lista (e vetor) & \code{[1, 2, 3]}, \code{⟨1, 2, 3⟩}, \code{{-1, 1}}, \code{[]} \\
 intervalo & \code{0..10}, \code{0..<10}, \code{range(0, 1, 0.25)} \\
 sólido & \code{cube(10)}, \code{A ∪ B}, \code{∅} \\
+perfil (região plana) & \code{circle(5)}, \code{square(4) ∖ circle(1)}, \code{polygon([⟨0, 0⟩, ⟨4, 0⟩, ⟨0, 3⟩])} \\
 transformação & \code{T(1, 2, 3)}, \code{Rz(30°)}, \code{S(2)}, \code{id} \\
 função & \code{x ↦ x²}, \code{sin}, \code{(∪)}, \code{cylinder(5)} (aplicação parcial) \\
 \bottomrule
@@ -737,6 +738,96 @@ operador vai até o próximo \code{+}, \code{-}, \code{∪} ou operador mais fra
 ⊢ Σ_{k=1}^{10} k², ∏_{k=1}^{5} k, Σ{ ⟨k, 0, 1⟩ | k ∈ 1..3 }
 anéis ≔ ⋃_{k ∈ 1..4} torus(8k, 1.5)
 ⊢ anéis
+\end{csg}
+
+% =======================================================
+\section{Perfis: extrusão e revolução}\label{sec:perfis}
+Muitas peças são mais fáceis de desenhar no plano: o contorno de uma letra, o corte de um vaso, uma estrela. Um
+\textbf{perfil} é uma região do plano $z = 0$. Ele não é impresso diretamente: vira sólido por \textbf{extrusão}
+(empilhado ao longo de $z$) ou por \textbf{revolução} (girado em torno de um eixo).
+
+\subsection{Construindo perfis}
+Os pontos do plano se escrevem com duas coordenadas, \code{⟨x, y⟩}.
+\begin{longtable}{@{}L{0.36}L{0.64}@{}}
+\toprule
+\colhead{Perfil} & \colhead{Região} \\
+\midrule
+\code{circle(r, n?)} & disco de raio $r$ centrado na origem \\
+\code{square(a)} ou \code{square(x, y)} & quadrado ou retângulo centrado na origem \\
+\code{polygon(pontos)} & região limitada pela poligonal fechada (a orientação não importa) \\
+\code{polygon([c₁, c₂, …])} & vários contornos: os interiores viram furos (regra par–ímpar) \\
+\code{region(f, a, b)} & região entre o gráfico de $f$ e o eixo $x$, para $a \le x \le b$ \\
+\code{offset(P, d)} & engorda o perfil de $d$ (afina se $d < 0$), arredondando os cantos \\
+\code{hull(P, Q, …)} & fecho convexo de perfis e/ou pontos \code{⟨x, y⟩} \\
+\bottomrule
+\end{longtable}
+As operações de conjunto \code{∪}, \code{∩}, \code{∖}, \code{△}, os grandes operadores \code{⋃} e \code{⋂} e as
+transformações que preservam o plano (\code{T(x, y)}, \code{Rz}, \code{Mx}, \code{My}, \code{S(k)}…) funcionam com perfis
+exatamente como com sólidos. \code{area}, \code{size}, \code{bounds} e \code{center} também. Perfis e sólidos não se
+misturam numa mesma operação: a mensagem de erro sugere extrudar ou revolucionar o perfil antes.
+
+Um perfil exibido com \code{⊢} aparece como uma placa fina sobre a mesa, e a barra de status mostra a sua área.
+\begin{csg}[run, id=perfis]
+estrela(n, R, r) ≔ polygon([ ρ · ⟨cos(θ), sin(θ)⟩
+                     | k ∈ 0..<2n, θ ≔ k · π/n, ρ ≔ if k mod 2 = 0 then R else r ])
+anel ≔ circle(10) ∖ circle(6)
+L ≔ polygon([⟨0, 0⟩, ⟨16, 0⟩, ⟨16, 5⟩, ⟨5, 5⟩, ⟨5, 20⟩, ⟨0, 20⟩])
+⊢ estrela(5, 12, 5), Tx(30) · anel, T(48, -10) · L, Tx(80) · offset(estrela(5, 12, 5), 2)
+⊢ area(anel)            # π(10² − 6²) ≈ 201
+\end{csg}
+\csgfig{pre=perfis&size=1000x340&dist=0.8&view=top}{perfis}{0.95}{Uma estrela, um anel, um perfil em L e a estrela arredondada por \texttt{offset}.}
+
+\subsection{Extrusão}
+\code{extrude(P, h)} empilha o perfil de $z = 0$ até $z = h$, formando um prisma generalizado. Dois argumentos
+opcionais deformam o empilhamento: \code{θ} gira o topo em relação à base (a torção é uniforme ao longo da altura) e
+\code{k} escala o topo (\code{k = 0} fecha numa ponta, como uma pirâmide; \code{⟨kx, ky⟩} escala cada eixo).
+\begin{longtable}{@{}L{0.36}L{0.64}@{}}
+\toprule
+\code{extrude(P, h)} & prisma de altura $h$ \\
+\code{extrude(P, h, θ)} & prisma torcido: o topo gira $θ$ \\
+\code{extrude(P, h, θ, k)} & torcido e com o topo escalado por $k$ \\
+\bottomrule
+\end{longtable}
+\begin{csg}[run, id=extrusoes]
+estrela(n, R, r) ≔ polygon([ ρ · ⟨cos(θ), sin(θ)⟩
+                     | k ∈ 0..<2n, θ ≔ k · π/n, ρ ≔ if k mod 2 = 0 then R else r ])
+P ≔ estrela(5, 12, 6)
+⊢ extrude(P, 8), Tx(30) · extrude(P, 25, 72°), Tx(60) · extrude(P, 25, 0°, 0),
+  Tx(90) · extrude(square(16), 25, 90°, 0.4)
+\end{csg}
+\csgfig{pre=extrusoes&size=1000x400&dist=0.75}{extrusoes}{0.95}{Extrusão simples, torcida (72°), em ponta (\texttt{k = 0}) e torcida com o topo reduzido.}
+A extrusão em ponta é uma pirâmide de base $P$; seu volume é $\frac13 \cdot \text{área}(P) \cdot h$, o que se confere com
+\code{volume} e \code{area}. A torção não altera o volume: cada fatia horizontal continua sendo uma cópia girada de $P$
+(princípio de Cavalieri).
+
+\subsection{Revolução}
+\code{revolve(P)} gira o perfil em torno do \textbf{eixo $y$} do plano, que passa a ser o eixo $z$ do sólido: um ponto
+\code{⟨x, y⟩} do perfil descreve o círculo de raio $x$ na altura $y$. Por isso o perfil deve estar no semiplano
+$x \ge 0$; a parte com $x < 0$ é descartada. \code{revolve(P, θ)} gira só o ângulo $θ$, o que mostra o corte do sólido.
+
+Num vaso, o raio é função da altura, $r(z)$: o perfil é a região $0 \le x \le r(y)$, escrita como um polígono por
+compreensão. A soma dos volumes de discos finos aproxima a integral $\pi\int r(z)^2\,dz$, e o resultado se compara com o
+volume calculado pelo núcleo:
+\begin{csg}[run, id=vaso]
+H ≔ 80;  e ≔ 2
+r(z) ≔ 20 + 7sin(z/10) + z/6       # raio na altura z
+externo ≔ polygon([⟨0, 0⟩] ++ [⟨r(z), z⟩ | z ∈ range(0, H, 0.5)] ++ [⟨0, H⟩])
+interno ≔ polygon([⟨0, e⟩] ++ [⟨r(z) - e, z⟩ | z ∈ range(e, H + 1, 0.5)] ++ [⟨0, H + 1⟩])
+vaso ≔ revolve(externo ∖ interno)
+⊢ vaso, Tx(100) · revolve(externo ∖ interno, 270°)
+⊢ volume(revolve(externo)), Σ[ π · r(z)^2 · 0.5 | z ∈ range(0.25, H, 0.5) ]
+\end{csg}
+\csgfig{pre=vaso&size=1000x480&dist=0.8}{vaso-revolucao}{0.85}{O vaso e a mesma revolução feita só até 270°, que mostra a parede e o fundo.}
+
+Com \code{region}, a região sob um gráfico girada em torno do eixo $y$ dá o \textbf{método das cascas}:
+$V = 2\pi\int_a^b x\,f(x)\,dx$. Para $f(x) = x$ em $[0, 2]$, $V = 16\pi/3 \approx 16{,}76$:
+\begin{csg}[run]
+⊢ volume(revolve(region(x ↦ x, 0, 2), 360°, 400)), 16π/3
+\end{csg}
+Já o teorema de Pappus diz que girar uma região de área $A$ cujo centroide está à distância $d$ do eixo gera volume
+$2\pi d A$: um quadrado de lado 2 centrado em $x = 10$ dá um anel de volume $80\pi$.
+\begin{csg}[run]
+⊢ volume(revolve(Tx(10) · square(2), 360°, 400)), 80π
 \end{csg}
 
 % =======================================================

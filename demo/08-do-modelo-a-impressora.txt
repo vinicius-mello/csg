@@ -1,0 +1,77 @@
+// Lição 8 — Do modelo à impressora
+// Gravar com: npm run demo 08-do-modelo-a-impressora
+
+trilha: ~/code/Schumann/scn15_5.mid ~/code/Schumann/scn15_10.mid ~/code/Schumann/scn15_13.mid
+
+título: Lição 8 | Do modelo à impressora
+
+tópico: Um projeto completo
+legenda: Vamos juntar o que vimos num projeto: uma base redonda com furos, quatro pilares e um rebaixo.
+digitar: r := 30
+enter
+digitar: base := cylinder(r, 4)
+enter
+digitar: furo(\theta) := Rz(\theta) \cdot Tx(r - 6) \cdot cylinder(2, 10)
+enter
+digitar: furos := \bigcup{ furo(k \cdot 45\deg) | k \in 0..<8 }
+legenda: Até aqui, nada de novo: um parâmetro, uma função e uma família.
+enter
+digitar: pilar(p) := T(p) \cdot box(4, 4, 20)
+legenda: `pilar(p)` recebe um ponto p e põe ali uma coluna.
+enter
+digitar: pilares := \bigcup{ pilar(
+paleta: ⟨
+digitar: 20sx, 20sy, 0
+direita: 1
+digitar: )↵           | sx, sy \in {-1, 1} }
+legenda: sx e sy valem −1 ou 1: os quatro cantos de um quadrado.
+enter
+digitar: peça := (base \setminus furos) \cup pilares \setminus sphere(8)
+enter
+enter
+digitar: \show ground(peça)
+legenda: `ground` apoia a peça na mesa: o plano z = 0 é a mesa da impressora.
+girar: 120 5
+
+tópico: Conferindo as medidas
+destacar: status
+legenda: A barra de status mostra as dimensões, o volume e o número de triângulos do objeto.
+destacar: -
+legenda: Os 60 mm de largura são o diâmetro da base, 2r. Tudo em milímetros, como na impressora.
+
+tópico: Resolução
+legenda: Um arquivo para impressão descreve a superfície com triângulos. Vamos vê-los.
+clicar: Exibir
+destacar: [data-setting="wireframe"]
+clicar: [data-setting="wireframe"]
+destacar: -
+legenda: Cada círculo é, na verdade, um polígono de muitos lados.
+clicar: Avaliar
+destacar: [data-quality="fine"]
+clicar: [data-quality="fine"]
+destacar: -
+avaliar
+legenda: Na qualidade fina há mais triângulos e as curvas ficam mais suaves. Use-a na hora de exportar.
+clicar: Exibir
+clicar: [data-setting="wireframe"]
+
+tópico: Exportando STL
+legenda: Para imprimir, exportamos um arquivo STL. Uma boa prática é dar um nome à versão final.
+selecionar: ⊢ ground(peça)
+digitar: final := ground(peça)↵↵\show final
+destacar: objects
+legenda: Cada objeto nomeado tem um botão STL no painel. Este gera o arquivo final.stl.
+destacar: -
+clicar: Arquivo
+destacar: [data-action="export-stl"]
+legenda: O menu Arquivo também exporta o objeto selecionado, em STL binário ou em texto.
+destacar: -
+clicar: Arquivo
+
+tópico: E depois?
+legenda: O STL vai para o fatiador da impressora (Cura, PrusaSlicer ou OrcaSlicer), que o corta em camadas.
+legenda: Dicas: apoie a peça na mesa, evite paredes mais finas que 0,8 mm e deixe 0,2 mm de folga nos encaixes.
+girar: 180 6
+legenda: -
+
+título: Fim da lição 8 | Próxima lição: indo além

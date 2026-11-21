@@ -246,3 +246,67 @@ test('errors are reported with positions', () => {
   // Several syntax errors in one pass.
   assert.equal(run('a ≔ (1\nb ≔ 2 +\nc ≔ )', kernel).errors.length >= 2, true);
 });
+
+// ---------- profiles: regions of the plane, extrusion and revolution ----------
+const solidVolume = (src) => {
+  const r = run(src, kernel);
+  if (r.errors.length) throw new Error(r.errors.map((e) => e.message).join('; '));
+  return kernel.volume(r.objects.at(-1).solid);
+};
+
+test('profiles: primitives, set operations and area', () => {
+  near(Number(val('area(square(10, 4))')), 40);
+  near(Number(val('area(polygon([⟨0, 0⟩, ⟨4, 0⟩, ⟨0, 3⟩]))')), 6);
+  near(Number(val('area(polygon([⟨0, 3⟩, ⟨4, 0⟩, ⟨0, 0⟩]))')), 6); // orientation does not matter
+  near(Number(val('area(square(10) ∖ square(4))')), 84);
+  near(Number(val('area(square(10) ∩ T(5, 5) · square(10))')), 25);
+  near(Number(val('area(⋃{ T(10k, 0) · square(2) | k ∈ 0..4 })')), 20);
+  near(Number(val('area(polygon([[⟨-5, -5⟩, ⟨5, -5⟩, ⟨5, 5⟩, ⟨-5, 5⟩], [⟨-1, -1⟩, ⟨1, -1⟩, ⟨1, 1⟩, ⟨-1, 1⟩]]))')), 96);
+  near(Number(val('area(circle(10, 400))')), Math.PI * 100, 0.1);
+  near(Number(val('area(offset(square(10), 1, 400))')), 100 + 40 + Math.PI, 0.05);
+  near(Number(val('area(hull(⟨0, 0⟩, ⟨2, 0⟩, ⟨0, 2⟩, ⟨0.5, 0.5⟩))')), 2);
+  assert.equal(val('size(T(3, 0) · square(4, 2))'), '[4, 2]');
+  assert.equal(val('Rz(90°) · ⟨1, 0⟩'), '[0, 1]');
+  assert.match(run('P ≔ square(2)', kernel).values[0].text, /perfil \(área 4 mm²\)/);
+});
+
+test('profiles: region under a graph', () => {
+  near(Number(val('area(region(x ↦ x^2, 0, 3))')), 9, 0.01);
+  near(Number(val('area(region(x ↦ sin(x), 0, π))')), 2, 0.001);
+});
+
+test('profiles: extrude with twist and scale', () => {
+  near(solidVolume('P ≔ extrude(square(10), 5)'), 500);
+  near(solidVolume('P ≔ extrude(square(10), 6, 0°, 0)'), 200, 1e-6); // pyramid: area · h / 3
+  near(solidVolume('P ≔ extrude(square(10), 10, 90°)'), 1000, 2);   // a twist keeps the volume
+  const r = run('P ≔ extrude(square(10), 5)\n⊢ bounds(P)', kernel);
+  assert.equal(r.shows[0].text, '[[-5, -5, 0], [5, 5, 5]]');
+});
+
+test('profiles: revolve (Pappus) and volumes of revolution', () => {
+  // a square of area 4 at distance 10 from the axis: V = 2π · 10 · 4
+  near(solidVolume('A ≔ revolve(T(10, 0) · square(2), 360°, 400)'), 2 * Math.PI * 10 * 4, 0.5);
+  near(solidVolume('A ≔ revolve(T(10, 0) · square(2), 180°, 400)'), Math.PI * 10 * 4, 0.3);
+  // shells: region under y = x around the y axis, V = 2π ∫₀² x · x dx = 16π/3
+  near(solidVolume('A ≔ revolve(region(x ↦ x, 0, 2), 360°, 400)'), (16 * Math.PI) / 3, 0.05);
+});
+
+test('profiles: errors explain what to do', () => {
+  assert.match(errorOf('A ≔ square(2) ∪ cube(2)'), /extrude/);
+  assert.match(errorOf('A ≔ ⋃{ square(2), cube(2) }'), /não combina perfis com sólidos/);
+  assert.match(errorOf('A ≔ Rx(30°) · square(2)'), /plano z = 0/);
+  assert.match(errorOf('A ≔ Tz(1) · circle(2)'), /tiraria do plano/);
+  assert.match(errorOf('A ≔ extrude(cube(2), 3)'), /esperava perfil/);
+  assert.match(errorOf('A ≔ volume(square(2))'), /use area/);
+  assert.match(errorOf('A ≔ revolve(T(-5, 0) · square(2))'), /x > 0/);
+  assert.match(errorOf('A ≔ polygon([⟨0, 0⟩, ⟨1, 0⟩])'), /3 pontos/);
+  assert.match(errorOf('A ≔ polygon([[0, 0, 1], [1, 0, 0], [0, 1, 0]])'), /fora do plano/);
+  assert.match(errorOf('A ≔ region(x ↦ x, 2, 1)'), /a < b/);
+});
+
+test('profiles: a plane-preserving reflection keeps the area', () => {
+  near(Number(val('area(Mx · polygon([⟨0, 0⟩, ⟨4, 0⟩, ⟨0, 3⟩]))')), 6);
+  near(Number(val('area(Rx(180°) · polygon([⟨0, 0⟩, ⟨4, 0⟩, ⟨0, 3⟩]))')), 6);
+  const r = run('P ≔ circle(3)', kernel);
+  assert.ok(r.shows[0].profile, 'a lone profile is shown');
+});
